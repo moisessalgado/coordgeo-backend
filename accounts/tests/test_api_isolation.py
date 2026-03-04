@@ -2,9 +2,19 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from accounts.models import User
 from organizations.models import Organization, Membership
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class AccountsAPIIsolationTest(APITestCase):
+class JWTAuthTestMixin:
+    """Mixin para gerar JWT tokens nos testes."""
+    
+    def get_jwt_token(self, user):
+        """Gera um JWT token para um usuário."""
+        refresh = RefreshToken.for_user(user)
+        return str(refresh.access_token)
+
+
+class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
     """Testes de isolamento multi-tenant para o endpoint de usuários."""
 
     @staticmethod
@@ -69,9 +79,13 @@ class AccountsAPIIsolationTest(APITestCase):
 
     def test_01_user_lists_coworkers_from_same_org(self):
         """[Users/List] User A deve ver User C (mesmo org), não User B."""
-        self.client.force_authenticate(user=self.user_a)
+        token_a = self.get_jwt_token(self.user_a)
+        headers = {
+            'HTTP_AUTHORIZATION': f'Bearer {token_a}',
+            'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)
+        }
 
-        response = self.client.get("/api/users/")
+        response = self.client.get("/api/users/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de usuários")
 
@@ -83,6 +97,28 @@ class AccountsAPIIsolationTest(APITestCase):
 
     def test_02_anon_cannot_list_users(self):
         """[Auth] Usuário não autenticado deve receber 401."""
-        response = self.client.get("/api/users/")
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
+        response = self.client.get("/api/users/", **headers)
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
+
+    def test_03_missing_organization_header(self):
+        """[Header] Requisição sem X-Organization-ID deve retornar 400."""
+        token_a = self.get_jwt_token(self.user_a)
+        headers = {'HTTP_AUTHORIZATION': f'Bearer {token_a}'}
+        response = self.client.get("/api/users/", **headers)  # Sem header org
+
+        self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header ausente")
+        error_detail = str(response.data.get("detail", ""))
+        self.assertIn("X-Organization-ID", error_detail)
+
+    def test_04_unauthorized_organization_access(self):
+        """[Org] User A não pode acessar com X-Organization-ID de Org B."""
+        token_a = self.get_jwt_token(self.user_a)
+        headers = {
+            'HTTP_AUTHORIZATION': f'Bearer {token_a}',
+            'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)  # user_a não é membro de org_b
+        }
+        response = self.client.get("/api/users/", **headers)
+
+        self._assert_status(response, status.HTTP_403_FORBIDDEN, "Org não autorizada")

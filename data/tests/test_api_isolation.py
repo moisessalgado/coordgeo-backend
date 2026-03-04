@@ -73,8 +73,9 @@ class DataAPIIsolationTest(APITestCase):
     def test_01_user_lists_own_datasources(self):
         """[Datasources/List] User A deve ver apenas Datasource A."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/datasources/")
+        response = self.client.get("/api/datasources/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de datasources")
 
@@ -86,8 +87,9 @@ class DataAPIIsolationTest(APITestCase):
     def test_02_user_cannot_get_other_datasource(self):
         """[Datasources/Detail] User A não deve acessar Datasource B."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/datasources/{self.datasource_b.id}/")
+        response = self.client.get(f"/api/datasources/{self.datasource_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a datasource de outro tenant")
 
@@ -96,3 +98,19 @@ class DataAPIIsolationTest(APITestCase):
         response = self.client.get("/api/datasources/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
+    def test_04_missing_organization_header_returns_400(self):
+        """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        response = self.client.get("/api/datasources/")  # Sem header
+
+        self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
+
+    def test_05_unauthorized_organization_returns_403(self):
+        """[Header Validation] User A não é membro de Org B, deve retornar 403."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
+        
+        response = self.client.get("/api/datasources/", **headers)
+
+        self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")

@@ -92,8 +92,9 @@ class ProjectsAPIIsolationTest(APITestCase):
     def test_01_user_lists_own_projects(self):
         """[Projects/List] User A deve ver apenas Project A."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/projects/")
+        response = self.client.get("/api/projects/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de projetos")
 
@@ -105,16 +106,18 @@ class ProjectsAPIIsolationTest(APITestCase):
     def test_02_user_cannot_get_other_project(self):
         """[Projects/Detail] User A não deve acessar Project B."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/projects/{self.project_b.id}/")
+        response = self.client.get(f"/api/projects/{self.project_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a projeto de outro tenant")
 
     def test_03_user_lists_layers_from_own_projects(self):
         """[Layers/List] User A deve ver apenas Layer A."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/layers/")
+        response = self.client.get("/api/layers/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de layers")
 
@@ -126,8 +129,9 @@ class ProjectsAPIIsolationTest(APITestCase):
     def test_04_user_cannot_get_other_layer(self):
         """[Layers/Detail] User A não deve acessar Layer B."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/layers/{self.layer_b.id}/")
+        response = self.client.get(f"/api/layers/{self.layer_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a layer de outro tenant")
 
@@ -136,3 +140,19 @@ class ProjectsAPIIsolationTest(APITestCase):
         response = self.client.get("/api/projects/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
+    def test_06_missing_organization_header_returns_400(self):
+        """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        response = self.client.get("/api/projects/")  # Sem header
+
+        self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
+
+    def test_07_unauthorized_organization_returns_403(self):
+        """[Header Validation] User A não é membro de Org B, deve retornar 403."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
+        
+        response = self.client.get("/api/projects/", **headers)
+
+        self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")

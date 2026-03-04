@@ -101,8 +101,9 @@ class PermissionsAPIIsolationTest(APITestCase):
     def test_01_user_lists_only_org_permissions(self):
         """[Permissions/List] User A deve ver apenas permissões da Org A."""
         self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/permissions/")
+        response = self.client.get("/api/permissions/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de permissões")
 
@@ -117,3 +118,19 @@ class PermissionsAPIIsolationTest(APITestCase):
         response = self.client.get("/api/permissions/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
+    def test_03_missing_organization_header_returns_400(self):
+        """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        response = self.client.get("/api/permissions/")  # Sem header
+
+        self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
+
+    def test_04_unauthorized_organization_returns_403(self):
+        """[Header Validation] User A não é membro de Org B, deve retornar 403."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
+        
+        response = self.client.get("/api/permissions/", **headers)
+
+        self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
