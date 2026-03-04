@@ -1,8 +1,102 @@
-**README**
+# coordgeo
 
-Setup do GeoDjango para manipulação de PMTiles usando Maplibre GL
+**Plataforma SaaS multi-tenant para gestão de dados geoespaciais com Django, GeoDjango e PostGIS.**
 
-Instale as libs geoespaciais:
+coordgeo é uma solução enterprise-ready para análise, visualização e colaboração de dados geoespaciais em tempo real, com suporte a múltiplas organizações, permissões granulares e integração com MapLibre GL.
+
+## ✨ Features
+
+- 🏢 **Multi-tenant SaaS**: Isolamento completo de dados entre organizações
+- 🗺️ **Geospatial-first**: PostGIS, GeoDjango, PMTiles, MVT e suporte a múltiplas fontes de dados
+- 🔐 **Segurança enterprise**: JWT authentication, RBAC, isolamento de contexto por organização
+- 💡 **API REST moderna**: Django REST Framework com paginação, filtros e ordenação
+- 🧪 **Testes automatizados**: Cobertura completa com foco em isolamento multi-tenant
+- 🚀 **Production-ready**: Gunicorn, PostGIS, stack otimizado para geoespacial
+- 📚 **Documentação clara**: Guia arquitetural detalhado para desenvolvimento
+
+## 🚀 Quick Start
+
+### Requisitos
+
+- Python 3.10+
+- PostgreSQL 13+ com PostGIS
+- WSL2 (Windows) ou Linux/macOS
+
+### Instalação
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/moisessalgado/coordgeo.git
+cd coordgeo
+```
+
+2. Crie um virtualenv:
+```bash
+python -m venv venv
+source venv/bin/activate  # WSL/Linux/macOS
+# ou
+venv\Scripts\activate  # Windows
+```
+
+3. Instale dependências:
+```bash
+pip install -r requirements.txt
+```
+
+4. Configure o arquivo `.env`:
+```bash
+cp .env.example .env
+# Edite .env com suas credenciais
+```
+
+5. Execute as migrações:
+```bash
+python manage.py migrate
+```
+
+6. Inicie o servidor:
+```bash
+python manage.py runserver
+```
+
+## 📖 Documentação
+
+Veja o guia de arquitetura completo em [.github/copilot-instructions.md](.github/copilot-instructions.md) para:
+- Padrões de isolamento multi-tenant
+- Contexto ativo de organização
+- Regras de performance geoespacial
+- Testes obrigatórios e security checklist
+
+## 🧪 Testes
+
+```bash
+# Executar todos os testes
+python manage.py test -v 2
+
+# Ou usar o script
+./venv/bin/python run_tests.py
+```
+
+## 🏗️ Arquitetura
+
+**Stack técnico:**
+- Backend: Django + Django REST Framework
+- Banco: PostgreSQL + PostGIS
+- Autenticação: JWT (djangorestframework-simplejwt)
+- Frontend: MapLibre GL
+- Geoespacial: GeoDjango, PMTiles, MVT
+- Servidor: Gunicorn (production)
+
+**Multi-tenancy:**
+- `Organization` como unidade de isolamento
+- `Membership` para controle de acesso
+- Header `X-Organization-ID` para contexto ativo
+- Middleware obrigatório para isolamento
+
+## 🔧 Setup da Database (PostgreSQL + PostGIS)
+
+### Instalar dependências do sistema
+
 ```bash
 sudo apt install -y \
 binutils \
@@ -13,21 +107,23 @@ libgeos-dev \
 libpq-dev \
 postgresql \
 postgresql-contrib \
-postgis \
+postgis
 ```
-Entre no postgresql:
+
+### Criar database e usuário
+
 ```bash
 sudo -u postgres psql
 ```
 
-Comandos usados na criação do banco geodjango:
-```bash
+Dentro do psql:
+```sql
 CREATE DATABASE geodjango;
 \c geodjango
 CREATE EXTENSION postgis;
 CREATE EXTENSION postgis_topology;
 
-CREATE USER django WITH PASSWORD 'xangomocama5';
+CREATE USER django WITH PASSWORD 'sua_senha_segura';
 GRANT ALL PRIVILEGES ON DATABASE geodjango TO django;
 GRANT CREATE ON SCHEMA public TO django;
 GRANT CONNECT ON DATABASE geodjango TO django;
@@ -38,29 +134,50 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO django;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO django;
 ```
 
-Criação do projeto Django
-```bash
-django-admin startproject config .
-python manage.py startapp core
-```
-Geração do PMTiles
+## 📦 Gerar PMTiles com Tippecanoe
+
+Para datasets geoespaciais grandes, use tippecanoe:
+
 ```bash
 tippecanoe \
-  -o car_sc.pmtiles \
+  -o output.pmtiles \
   -Z5 -z15 \
   --buffer=127 \
   --detect-shared-borders \
   --coalesce-densest-as-needed \
   --drop-densest-as-needed \
   --no-tile-size-limit \
-  car_sc.geojson
-  ```
-Usando o Gunicorn para servir o PMTiles (Django runserver não suporta HTTP Range header para servir o pmtiles)
+  input.geojson
+```
+
+**Importante**: Use Gunicorn em produção para servir PMTiles, pois o servidor de desenvolvimento do Django não suporta HTTP Range headers necessários para streaming eficiente de tiles.
+
 ```bash
 gunicorn config.wsgi:application --bind 127.0.0.1:8000
 ```
 
-API REST usando o DRF
-```bash
-pip install djangorestframework
-```
+## 🔐 Segurança
+
+- Todas as credenciais em variáveis de ambiente (`.env`)
+- Isolamento de dados por organização
+- JWT com tokens curta-vida
+- RBAC (Role-Based Access Control)
+- Testes de isolamento multi-tenant
+
+Veja [Security Checklist](.github/copilot-instructions.md#security-checklist-pre-merge) antes de fazer deploy.
+
+## 🤝 Contribuindo
+
+1. Crie uma feature branch: `git checkout -b feature/sua-feature`
+2. Commit em português: `git commit -m "feat: descrição da feature"`
+3. Push e abra um Pull Request
+4. Garanta que os testes passem: `python manage.py test -v 2`
+
+## 📝 Licença
+
+MIT
+
+## 👤 Autor
+
+**Moises Salgado**  
+GitHub: [@moisessalgado](https://github.com/moisessalgado)
