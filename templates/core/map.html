@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>CAR SC - WebGIS</title>
+
+    <!-- MapLibre -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
+
+    <!-- PMTiles -->
+    <script src="https://unpkg.com/pmtiles@3.0.5/dist/pmtiles.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+    // Registrar protocolo PMTiles
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            version: 8,
+            sources: {
+                osm: {
+                    type: "raster",
+                    tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                    tileSize: 256
+                },
+                car: {
+                    type: "vector",
+                    url: "pmtiles:///static/tiles/car_sc.pmtiles"
+                }
+            },
+            layers: [
+                {
+                    id: "osm",
+                    type: "raster",
+                    source: "osm"
+                },
+                {
+                    id: "car-fill",
+                    type: "fill",
+                    source: "car",
+                    "source-layer": "car",  // ⚠️ ajustar conforme seu tile
+                    paint: {
+                        "fill-color": "#2E8B57",
+                        "fill-opacity": 0.4
+                    }
+                },
+                {
+                    id: "car-outline",
+                    type: "line",
+                    source: "car",
+                    "source-layer": "car_sc",
+                    paint: {
+                        "line-color": "#145A32",
+                        "line-width": 0.5
+                    }
+                }
+            ]
+        },
+        center: [-50, -27],
+        zoom: 6
+    });
+
+    // Popup ao clicar
+    map.on("click", "car-fill", function (e) {
+        const props = e.features[0].properties;
+
+        let html = "";
+        for (const key in props) {
+            html += `<b>${key}</b>: ${props[key]}<br>`;
+        }
+
+        new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(html)
+            .addTo(map);
+    });
+
+    map.on("mouseenter", "car-fill", () => {
+        map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "car-fill", () => {
+        map.getCanvas().style.cursor = "";
+    });
+
+</script>
+
+</body>
+</html>
