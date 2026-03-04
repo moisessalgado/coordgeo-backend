@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis', # Add GeoDjango for geospatial support
     "rest_framework", # Add Django REST Framework for building APIs
+    'django_extensions', # Add django-extensions for graph_models and other utilities
     'core', # Add the core app to the installed apps
     'accounts', # Add the accounts app to the installed apps
     'organizations', # Add the organizations app to the installed apps
