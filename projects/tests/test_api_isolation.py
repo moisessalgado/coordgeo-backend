@@ -156,3 +156,17 @@ class ProjectsAPIIsolationTest(APITestCase):
         response = self.client.get("/api/projects/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
+
+    def test_08_create_project_enforces_active_organization(self):
+        """[Projects/Create] Org enviada no payload deve ser ignorada em favor da org ativa."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
+
+        payload = {
+            "name": "Project Enforced Org",
+            "organization": self.org_b.id,
+        }
+        response = self.client.post("/api/projects/", payload, format="json", **headers)
+
+        self._assert_status(response, status.HTTP_201_CREATED, "Criação de projeto com org forçada")
+        self.assertEqual(response.data["organization"], self.org_a.id)

@@ -31,6 +31,9 @@ class MembershipViewSet(viewsets.ModelViewSet):
             organization=active_org
         )
 
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.active_organization)
+
 
 class TeamViewSet(viewsets.ModelViewSet):
     serializer_class = TeamSerializer
@@ -44,3 +47,6 @@ class TeamViewSet(viewsets.ModelViewSet):
         return Team.objects.select_related("organization").prefetch_related("members").filter(
             organization=active_org
         )
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.active_organization)

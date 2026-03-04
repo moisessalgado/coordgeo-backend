@@ -134,3 +134,19 @@ class PermissionsAPIIsolationTest(APITestCase):
         response = self.client.get("/api/permissions/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
+
+    def test_05_create_org_permission_enforces_active_resource(self):
+        """[Permissions/Create] resource_id para organização deve ser forçado para org ativa."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
+
+        payload = {
+            "subject_user": self.user_c.id,
+            "resource_type": Permission.ResourceType.ORGANIZATION,
+            "resource_id": self.org_b.id,
+            "role": Permission.Role.MANAGE,
+        }
+        response = self.client.post("/api/permissions/", payload, format="json", **headers)
+
+        self._assert_status(response, status.HTTP_201_CREATED, "Criação de permissão com resource_id forçado")
+        self.assertEqual(response.data["resource_id"], self.org_a.id)

@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 
 from .models import Project, Layer
 from .serializers import ProjectSerializer, LayerSerializer
@@ -19,6 +20,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
             organization=active_org
         )
 
+    def perform_create(self, serializer):
+        serializer.save(
+            organization=self.request.active_organization,
+            created_by=self.request.user,
+        )
+
 
 class LayerViewSet(viewsets.ModelViewSet):
     serializer_class = LayerSerializer
@@ -32,3 +39,16 @@ class LayerViewSet(viewsets.ModelViewSet):
         return Layer.objects.select_related("project", "datasource").filter(
             project__organization=active_org
         )
+
+    def perform_create(self, serializer):
+        active_org = self.request.active_organization
+        project = serializer.validated_data.get("project")
+        datasource = serializer.validated_data.get("datasource")
+
+        if project and project.organization_id != active_org.id:
+            raise ValidationError({"project": "Project must belong to active organization."})
+
+        if datasource and datasource.organization_id != active_org.id:
+            raise ValidationError({"datasource": "Datasource must belong to active organization."})
+
+        serializer.save()

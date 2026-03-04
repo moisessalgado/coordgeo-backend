@@ -114,3 +114,19 @@ class DataAPIIsolationTest(APITestCase):
         response = self.client.get("/api/datasources/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
+
+    def test_06_create_datasource_enforces_active_organization(self):
+        """[Datasources/Create] Org enviada no payload deve ser ignorada em favor da org ativa."""
+        self.client.force_authenticate(user=self.user_a)
+        headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
+
+        payload = {
+            "name": "Datasource Enforced Org",
+            "organization": self.org_b.id,
+            "datasource_type": Datasource.Type.VECTOR,
+            "storage_url": "s3://bucket/enforced.geojson",
+        }
+        response = self.client.post("/api/datasources/", payload, format="json", **headers)
+
+        self._assert_status(response, status.HTTP_201_CREATED, "Criação de datasource com org forçada")
+        self.assertEqual(response.data["organization"], self.org_a.id)

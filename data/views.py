@@ -18,3 +18,9 @@ class DatasourceViewSet(viewsets.ModelViewSet):
         return Datasource.objects.select_related("organization", "created_by").filter(
             organization=active_org
         )
+
+    def perform_create(self, serializer):
+        serializer.save(
+            organization=self.request.active_organization,
+            created_by=self.request.user,
+        )
