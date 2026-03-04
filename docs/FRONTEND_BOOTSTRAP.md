@@ -4,10 +4,10 @@
 
 ```bash
 # Via GitHub CLI
-gh repo create geodjango-frontend --public --clone --source=https://github.com/moises-salgado/geodjango-frontend.git
+gh repo create coordgeo-frontend --public --clone --source=https://github.com/moises-salgado/coordgeo-frontend.git
 
 # Ou manualmente no GitHub
-# 1. New repository → geodjango-frontend
+# 1. New repository → coordgeo-frontend
 # 2. PUBLIC (para código aberto)
 # 3. Initialize with README
 # 4. Clone locally
@@ -16,7 +16,7 @@ gh repo create geodjango-frontend --public --clone --source=https://github.com/m
 ## 2. Project Initialization
 
 ```bash
-cd geodjango-frontend
+cd coordgeo-frontend
 
 # Remove default README if exists
 rm README.md
@@ -214,7 +214,7 @@ EOF
 git add .
 git commit -m "chore: inicializa projeto frontend React + Vite com configuração base"
 git branch -M main
-git remote add origin https://github.com/moises-salgado/geodjango-frontend.git
+git remote add origin https://github.com/moises-salgado/coordgeo-frontend.git
 git push -u origin main
 ```
 
