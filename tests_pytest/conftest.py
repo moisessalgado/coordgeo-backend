@@ -111,6 +111,95 @@ def org_headers_factory(jwt_token_factory):
 
 
 @pytest.fixture
+def project_factory(db):
+    """
+    Factory para criar projetos.
+    
+    Uso:
+        project = project_factory(name="My Project", organization=org)
+    """
+    from projects.models import Project
+
+    def factory(*, name: str, organization, created_by=None, description: str = ""):
+        return Project.objects.create(
+            name=name,
+            organization=organization,
+            created_by=created_by,
+            description=description,
+        )
+
+    return factory
+
+
+@pytest.fixture
+def datasource_factory(db):
+    """
+    Factory para criar datasources.
+    
+    Uso:
+        datasource = datasource_factory(
+            name="My Data",
+            organization=org,
+            created_by=user,
+            datasource_type="vector",
+            storage_url="s3://bucket/data.geojson"
+        )
+    """
+    from data.models import Datasource
+
+    def factory(
+        *,
+        name: str,
+        organization,
+        created_by,
+        datasource_type: str = Datasource.Type.VECTOR,
+        storage_url: str = "s3://bucket/data.geojson",
+        description: str = "",
+    ):
+        return Datasource.objects.create(
+            name=name,
+            organization=organization,
+            created_by=created_by,
+            datasource_type=datasource_type,
+            storage_url=storage_url,
+            description=description,
+        )
+
+    return factory
+
+
+@pytest.fixture
+def layer_factory(db):
+    """
+    Factory para criar layers.
+    
+    Uso:
+        layer = layer_factory(name="My Layer", project=project, datasource=datasource)
+    """
+    from projects.models import Layer
+
+    def factory(
+        *,
+        name: str,
+        project,
+        datasource,
+        description: str = "",
+        visibility: bool = True,
+        z_index: int = 0,
+    ):
+        return Layer.objects.create(
+            name=name,
+            project=project,
+            datasource=datasource,
+            description=description,
+            visibility=visibility,
+            z_index=z_index,
+        )
+
+    return factory
+
+
+@pytest.fixture
 def api_client():
     """
     Cliente DRF para testes de API.
