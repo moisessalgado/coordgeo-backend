@@ -10,9 +10,8 @@ from permissions.views import PermissionViewSet
 
 
 # Create a single router for the API.
-# Mounted by config/urls.py in both:
+# Mounted by config/urls.py at:
 # - /api/v1/ (canonical)
-# - /api/ (legacy compatibility)
 router = DefaultRouter()
 
 # Register all viewsets with explicit basenames

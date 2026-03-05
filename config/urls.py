@@ -21,10 +21,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # centralized API routes
-    # canonical versioned API
+    # canonical versioned API (only)
     path('api/v1/', include(('api.urls', 'api'), namespace='api-v1')),
-    # legacy compatibility (planned deprecation)
-    path('api/', include(('api.urls', 'api'), namespace='api-legacy')),
 
     path("", include("core.urls")),
 ]

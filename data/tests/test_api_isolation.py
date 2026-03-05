@@ -75,7 +75,7 @@ class DataAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/datasources/", **headers)
+        response = self.client.get("/api/v1/datasources/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de datasources")
 
@@ -89,20 +89,20 @@ class DataAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/datasources/{self.datasource_b.id}/", **headers)
+        response = self.client.get(f"/api/v1/datasources/{self.datasource_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a datasource de outro tenant")
 
     def test_03_anon_cannot_list_datasources(self):
         """[Auth] Usuário não autenticado deve receber 401."""
-        response = self.client.get("/api/datasources/")
+        response = self.client.get("/api/v1/datasources/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
     def test_04_missing_organization_header_returns_400(self):
         """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
         self.client.force_authenticate(user=self.user_a)
         
-        response = self.client.get("/api/datasources/")  # Sem header
+        response = self.client.get("/api/v1/datasources/")  # Sem header
 
         self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
 
@@ -111,7 +111,7 @@ class DataAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
         
-        response = self.client.get("/api/datasources/", **headers)
+        response = self.client.get("/api/v1/datasources/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
 
@@ -126,7 +126,7 @@ class DataAPIIsolationTest(APITestCase):
             "datasource_type": Datasource.Type.VECTOR,
             "storage_url": "s3://bucket/enforced.geojson",
         }
-        response = self.client.post("/api/datasources/", payload, format="json", **headers)
+        response = self.client.post("/api/v1/datasources/", payload, format="json", **headers)
 
         self._assert_status(response, status.HTTP_201_CREATED, "Criação de datasource com org forçada")
         self.assertEqual(response.data["organization"], self.org_a.id)

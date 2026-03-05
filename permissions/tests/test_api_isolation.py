@@ -103,7 +103,7 @@ class PermissionsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/permissions/", **headers)
+        response = self.client.get("/api/v1/permissions/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de permissões")
 
@@ -115,14 +115,14 @@ class PermissionsAPIIsolationTest(APITestCase):
 
     def test_02_anon_cannot_list_permissions(self):
         """[Auth] Usuário não autenticado deve receber 401."""
-        response = self.client.get("/api/permissions/")
+        response = self.client.get("/api/v1/permissions/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
     def test_03_missing_organization_header_returns_400(self):
         """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
         self.client.force_authenticate(user=self.user_a)
         
-        response = self.client.get("/api/permissions/")  # Sem header
+        response = self.client.get("/api/v1/permissions/")  # Sem header
 
         self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
 
@@ -131,7 +131,7 @@ class PermissionsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
         
-        response = self.client.get("/api/permissions/", **headers)
+        response = self.client.get("/api/v1/permissions/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
 
@@ -146,7 +146,7 @@ class PermissionsAPIIsolationTest(APITestCase):
             "resource_id": self.org_b.id,
             "role": Permission.Role.MANAGE,
         }
-        response = self.client.post("/api/permissions/", payload, format="json", **headers)
+        response = self.client.post("/api/v1/permissions/", payload, format="json", **headers)
 
         self._assert_status(response, status.HTTP_201_CREATED, "Criação de permissão com resource_id forçado")
         self.assertEqual(response.data["resource_id"], self.org_a.id)

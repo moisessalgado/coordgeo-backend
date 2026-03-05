@@ -70,7 +70,7 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/teams/", **headers)
+        response = self.client.get("/api/v1/teams/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de teams para User A")
 
@@ -84,7 +84,7 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
         
-        response = self.client.get(f"/api/teams/{self.team_b.id}/", **headers)
+        response = self.client.get(f"/api/v1/teams/{self.team_b.id}/", **headers)
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Detalhe de team de outra organização")
 
     def test_03_user_b_list_teams_only_from_own_org(self):
@@ -92,7 +92,7 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_b)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}
 
-        response = self.client.get("/api/teams/", **headers)
+        response = self.client.get("/api/v1/teams/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de teams para User B")
 
@@ -106,7 +106,7 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/organizations/", **headers)
+        response = self.client.get("/api/v1/organizations/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de organizações para User A")
 
@@ -118,7 +118,7 @@ class MultiTenantIsolationTest(APITestCase):
     def test_05_unauthenticated_user_cannot_access_teams(self):
         """[Auth] Usuário não autenticado deve receber 401."""
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
-        response = self.client.get("/api/teams/", **headers)
+        response = self.client.get("/api/v1/teams/", **headers)
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
 
@@ -127,7 +127,7 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/organizations/{self.org_a.id}/", **headers)
+        response = self.client.get(f"/api/v1/organizations/{self.org_a.id}/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Detalhe da própria organização")
         self.assertEqual(response.data["name"], "Org A", f"Esperado nome Org A, recebido {response.data}")
@@ -137,6 +137,6 @@ class MultiTenantIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/organizations/{self.org_b.id}/", **headers)
+        response = self.client.get(f"/api/v1/organizations/{self.org_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Detalhe de organização de outro tenant")

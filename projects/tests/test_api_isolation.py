@@ -94,7 +94,7 @@ class ProjectsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/projects/", **headers)
+        response = self.client.get("/api/v1/projects/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de projetos")
 
@@ -108,7 +108,7 @@ class ProjectsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/projects/{self.project_b.id}/", **headers)
+        response = self.client.get(f"/api/v1/projects/{self.project_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a projeto de outro tenant")
 
@@ -117,7 +117,7 @@ class ProjectsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get("/api/layers/", **headers)
+        response = self.client.get("/api/v1/layers/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de layers")
 
@@ -131,20 +131,20 @@ class ProjectsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
 
-        response = self.client.get(f"/api/layers/{self.layer_b.id}/", **headers)
+        response = self.client.get(f"/api/v1/layers/{self.layer_b.id}/", **headers)
 
         self._assert_status(response, status.HTTP_404_NOT_FOUND, "Acesso a layer de outro tenant")
 
     def test_05_anon_cannot_list_projects(self):
         """[Auth] Usuário não autenticado deve receber 401."""
-        response = self.client.get("/api/projects/")
+        response = self.client.get("/api/v1/projects/")
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
     def test_06_missing_organization_header_returns_400(self):
         """[Header Validation] Requisição sem X-Organization-ID deve retornar 400."""
         self.client.force_authenticate(user=self.user_a)
         
-        response = self.client.get("/api/projects/")  # Sem header
+        response = self.client.get("/api/v1/projects/")  # Sem header
 
         self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header X-Organization-ID ausente")
 
@@ -153,7 +153,7 @@ class ProjectsAPIIsolationTest(APITestCase):
         self.client.force_authenticate(user=self.user_a)
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}  # User A não é membro de Org B
         
-        response = self.client.get("/api/projects/", **headers)
+        response = self.client.get("/api/v1/projects/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "User não autorizado para org especificada")
 
@@ -166,7 +166,7 @@ class ProjectsAPIIsolationTest(APITestCase):
             "name": "Project Enforced Org",
             "organization": self.org_b.id,
         }
-        response = self.client.post("/api/projects/", payload, format="json", **headers)
+        response = self.client.post("/api/v1/projects/", payload, format="json", **headers)
 
         self._assert_status(response, status.HTTP_201_CREATED, "Criação de projeto com org forçada")
         self.assertEqual(response.data["organization"], self.org_a.id)

@@ -31,7 +31,7 @@ User = get_user_model()
 
 def test_jwt_endpoint():
     """Testa se endpoint JWT está disponível e funciona"""
-    print("\n✓ Testando JWT Token Endpoint (v1 + legado)...")
+    print("\n✓ Testando JWT Token Endpoint (/api/v1 only)...")
     
     # Limpar usuários de testes anteriores para evitar duplicatas
     User.objects.filter(email='test@example.com').delete()
@@ -55,15 +55,7 @@ def test_jwt_endpoint():
         print(f"  ✓ POST /api/v1/token/ retornou status 200")
         print(f"  ✓ Response contém 'access' token: {'access' in response.json()}")
         print(f"  ✓ Response contém 'refresh' token: {'refresh' in response.json()}")
-        legacy_response = client.post('/api/token/', {
-            'email': 'test@example.com',
-            'password': 'testpass123'
-        })
-        if legacy_response.status_code == 200:
-            print(f"  ✓ POST /api/token/ (legado) retornou status 200")
-            return True
-        print(f"  ✗ POST /api/token/ (legado) retornou status {legacy_response.status_code}")
-        return False
+        return True
     else:
         print(f"  ✗ POST /api/v1/token/ retornou status {response.status_code}")
         print(f"  Response: {response.json()}")
@@ -72,7 +64,7 @@ def test_jwt_endpoint():
 
 def test_user_organizations_endpoint():
     """Testa se endpoint de organizações do usuário está disponível"""
-    print("\n✓ Testando User Organizations Bootstrap Endpoint (v1 + legado)...")
+    print("\n✓ Testando User Organizations Bootstrap Endpoint (/api/v1 only)...")
     
     # Limpar dados de testes anteriores
     User.objects.filter(email='test2@example.com').delete()
@@ -111,12 +103,7 @@ def test_user_organizations_endpoint():
         print(f"  ✓ Response contém {len(orgs)} organização(ões)")
         if isinstance(orgs, list) and len(orgs) > 0:
             print(f"  ✓ Primeira org: {orgs[0].get('name', 'N/A')}")
-        legacy_response = client.get('/api/user/organizations/')
-        if legacy_response.status_code == 200:
-            print(f"  ✓ GET /api/user/organizations/ (legado) retornou status 200")
-            return True
-        print(f"  ✗ GET /api/user/organizations/ (legado) retornou status {legacy_response.status_code}")
-        return False
+        return True
     else:
         print(f"  ✗ GET /api/v1/user/organizations/ retornou status {response.status_code}")
         print(f"  Response: {response.json()}")

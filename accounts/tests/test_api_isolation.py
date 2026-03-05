@@ -85,7 +85,7 @@ class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
             'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)
         }
 
-        response = self.client.get("/api/users/", **headers)
+        response = self.client.get("/api/v1/users/", **headers)
 
         self._assert_status(response, status.HTTP_200_OK, "Listagem de usuários")
 
@@ -98,7 +98,7 @@ class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
     def test_02_anon_cannot_list_users(self):
         """[Auth] Usuário não autenticado deve receber 401."""
         headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
-        response = self.client.get("/api/users/", **headers)
+        response = self.client.get("/api/v1/users/", **headers)
 
         self._assert_status(response, status.HTTP_401_UNAUTHORIZED, "Acesso sem autenticação")
 
@@ -106,7 +106,7 @@ class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
         """[Header] Requisição sem X-Organization-ID deve retornar 400."""
         token_a = self.get_jwt_token(self.user_a)
         headers = {'HTTP_AUTHORIZATION': f'Bearer {token_a}'}
-        response = self.client.get("/api/users/", **headers)  # Sem header org
+        response = self.client.get("/api/v1/users/", **headers)  # Sem header org
 
         self._assert_status(response, status.HTTP_400_BAD_REQUEST, "Header ausente")
         error_detail = str(response.data.get("detail", ""))
@@ -119,6 +119,6 @@ class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
             'HTTP_AUTHORIZATION': f'Bearer {token_a}',
             'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)  # user_a não é membro de org_b
         }
-        response = self.client.get("/api/users/", **headers)
+        response = self.client.get("/api/v1/users/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "Org não autorizada")
