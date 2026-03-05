@@ -208,3 +208,60 @@ def api_client():
         response = api_client.get("/api/v1/users/", **headers)
     """
     return APIClient()
+
+
+@pytest.fixture
+def team_factory(db):
+    """
+    Factory para criar teams.
+    
+    Uso:
+        team = team_factory(name="My Team", organization=org)
+    """
+    from organizations.models import Team
+
+    def factory(*, name: str, organization, description: str = ""):
+        return Team.objects.create(
+            name=name,
+            organization=organization,
+            description=description,
+        )
+
+    return factory
+
+
+@pytest.fixture
+def permission_factory(db):
+    """
+    Factory para criar permissions.
+    
+    Uso:
+        permission = permission_factory(
+            subject_user=user,
+            resource_type="organization",
+            resource_id=org.id,
+            role="view",
+            granted_by=admin_user
+        )
+    """
+    from permissions.models import Permission
+
+    def factory(
+        *,
+        subject_user=None,
+        subject_team=None,
+        resource_type: str,
+        resource_id: int,
+        role: str,
+        granted_by,
+    ):
+        return Permission.objects.create(
+            subject_user=subject_user,
+            subject_team=subject_team,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            role=role,
+            granted_by=granted_by,
+        )
+
+    return factory
