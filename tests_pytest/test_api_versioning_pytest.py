@@ -1,8 +1,9 @@
 import pytest
+import uuid
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from organizations.models import Membership
+from organizations.models import Membership, Organization
 
 
 @pytest.mark.django_db
@@ -34,9 +35,14 @@ def test_user_organizations_endpoint_available_on_v1_only(user_factory):
         password="testpass123",
     )
 
+    # Usar UUID para garantir slug único
+    unique_slug = f"version-org-pytest-{uuid.uuid4().hex[:8]}"
+    
     organization = user.owned_organizations.create(
         name="Version Org Pytest",
-        slug="version-org-pytest",
+        slug=unique_slug,
+        org_type=Organization.OrgType.TEAM,
+        plan=Organization.Plan.PRO,
     )
 
     Membership.objects.get_or_create(

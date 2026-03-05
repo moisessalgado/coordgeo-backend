@@ -4,7 +4,7 @@ Migrado de: api/tests.py (APIVersioningCompatibilityTest)
 """
 import pytest
 from rest_framework import status
-from organizations.models import Membership
+from organizations.models import Membership, Organization
 
 
 @pytest.mark.api
@@ -21,6 +21,8 @@ class TestAPIVersioningCompatibility:
         org = org_factory(
             name="Version Org",
             slug="version-org",
+            org_type=Organization.OrgType.TEAM,
+            plan=Organization.Plan.PRO,
             owner=user
         )
         membership_factory(
