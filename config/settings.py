@@ -165,8 +165,10 @@ REST_FRAMEWORK = {
 # CORS Configuration for frontend on different domain/port
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite dev server
+    "http://localhost:4173",  # Vite preview server
     "http://localhost:3000",  # React dev server alternative
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
