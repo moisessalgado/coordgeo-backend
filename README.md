@@ -27,7 +27,7 @@ coordgeo é uma solução enterprise-ready para análise, visualização e colab
 1. Clone o repositório:
 ```bash
 git clone https://github.com/moisessalgado/coordgeo.git
-cd coordgeo
+cd coordgeo/backend
 ```
 
 2. Crie um virtualenv:
@@ -47,6 +47,8 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edite .env com suas credenciais
+# Windows (PowerShell)
+copy .env.example .env
 ```
 
 5. Execute as migrações:
@@ -91,7 +93,12 @@ python manage.py test -v 2
 - `Organization` como unidade de isolamento
 - `Membership` para controle de acesso
 - Header `X-Organization-ID` para contexto ativo
-- Middleware obrigatório para isolamento
+- Permission class `IsOrgMember` para validação de contexto ativo
+
+**Versionamento da API:**
+- Prefixo canônico: `/api/v1/`
+- Compatibilidade legada temporária: `/api/`
+- Novos clientes devem usar `/api/v1/`
 
 ## 🔧 Setup da Database (PostgreSQL + PostGIS)
 

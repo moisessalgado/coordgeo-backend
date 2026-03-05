@@ -55,14 +55,14 @@ touch src/types/{auth,organization,geospatial,api}.ts
 Create `.env` file in root:
 
 ```
-VITE_API_URL=http://localhost:8000/api
+VITE_API_URL=http://localhost:8000/api/v1
 VITE_MAP_STYLE=https://demotiles.maplibre.org/style.json
 ```
 
 Create `.env.production` :
 
 ```
-VITE_API_URL=https://api.example.com/api
+VITE_API_URL=https://api.example.com/api/v1
 VITE_MAP_STYLE=https://demotiles.maplibre.org/style.json
 ```
 
@@ -233,7 +233,7 @@ Once dev server is running, test API connectivity:
 
 ```bash
 # In browser console or test script:
-curl -X POST http://localhost:8000/api/token/ \
+curl -X POST http://localhost:8000/api/v1/token/ \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password"}'
 ```
@@ -281,11 +281,11 @@ Expected response:
 
 Before starting heavy frontend development, ensure backend has:
 
-- [x] JWT token endpoint (`POST /api/token/`)
-- [x] User organizations endpoint (`GET /api/user/organizations/`)
-- [x] Paginated project endpoint (`GET /api/projects/`)
-- [x] Paginated layers endpoint (`GET /api/layers/`)
-- [x] Paginated datasources endpoint (`GET /api/datasources/`)
+- [x] JWT token endpoint (`POST /api/v1/token/`)
+- [x] User organizations endpoint (`GET /api/v1/user/organizations/`)
+- [x] Paginated project endpoint (`GET /api/v1/projects/`)
+- [x] Paginated layers endpoint (`GET /api/v1/layers/`)
+- [x] Paginated datasources endpoint (`GET /api/v1/datasources/`)
 - [x] CORS configured for `http://localhost:5173`
 - [ ] Filtros em Projects/Layers/Datasources (nice-to-have)
 - [ ] OpenAPI documentation (Swagger)
@@ -356,17 +356,17 @@ CORS_ALLOW_CREDENTIALS = True
 Solutions:
 1. Check token is in Authorization header: `Bearer <token>`
 2. Check token is not expired (refresh if needed)
-3. Check token was obtained from `/api/token/`
+3. Check token was obtained from `/api/v1/token/`
 
 ### 400 Bad Request (missing X-Organization-ID)
-Solution: All API calls except `/api/token/` and `/api/user/organizations/` require header:
+Solution: All API calls except `/api/v1/token/` and `/api/v1/user/organizations/` require header:
 ```
 X-Organization-ID: <uuid>
 ```
 
 ### Cannot read property 'access' from undefined
 Problem: Token response format unexpected
-Solution: Log response from `/api/token/` endpoint, ensure it returns `{ access, refresh }`
+Solution: Log response from `/api/v1/token/` endpoint, ensure it returns `{ access, refresh }`
 
 ---
 

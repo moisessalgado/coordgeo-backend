@@ -1,184 +1,55 @@
-# GeoDjango Multi-Tenant Codebase Guide
+# Copilot Instructions — coordgeo/backend
 
-## Architecture Overview
+## 1) Escopo
+- Repositório backend Django/DRF + GeoDjango + PostGIS (`backend/`).
+- Existe frontend separado em `../frontend` (React + Vite).
 
-This is a **multi-tenant SaaS geospatial platform** using Django + GeoDjango + PostGIS.
+## 2) Arquitetura atual
+- Multi-tenant com `Organization` como boundary.
+- Contexto de org vem de `organizations.permissions.IsOrgMember` (não middleware).
+- `IsOrgMember` lê `X-Organization-ID`, valida membership e define `request.active_organization`.
+- ViewSets org-scoped filtram por org ativa em `get_queryset()` e forçam org em `perform_create()`.
 
-**Key isolation unit**: `Organization` is the root of all multi-tenancy. Every user must belong to at least one org (personal orgs are created automatically).
+## 3) Contrato com frontend (não quebrar)
+- API canônica: `/api/v1/`.
+- Compatibilidade legada: `/api/` (mesmas rotas, depreciação futura).
+- JWT:
+  - `POST /api/v1/token/` (e legado `/api/token/`)
+  - `POST /api/v1/token/refresh/` (e legado `/api/token/refresh/`)
+- Bootstrap de organizações sem header:
+  - `GET /api/v1/user/organizations/` (e legado `/api/user/organizations/`)
+- Endpoints org-scoped exigem `Authorization: Bearer <token>` + `X-Organization-ID`.
+- Erros esperados: header ausente 400; sem membership 403.
+- List endpoints mantêm shape paginado DRF: `count/next/previous/results`.
 
-**Data hierarchy**: 
-- `User` (custom model, email-based auth) → `Organization` (personal/team) → `Membership` (role-based) 
-- `Organization` → `Projects` → `Layers` → `Datasources` (shared across projects)
-- Organizations own: Datasources, Permissions, Teams (sub-groups within org)
+## 4) Fluxo de desenvolvimento
+- Setup: `.env` a partir de `.env.example` + Postgres/PostGIS.
+- Comandos principais em `backend/`:
+  - `python manage.py migrate`
+  - `python manage.py runserver`
+  - `python manage.py test -v 2`
+  - `python run_tests.py` (`keepdb=True`)
 
-**Spatial focus**: Uses PostGIS backend, supports Vector/Raster/PMTiles/MVT datasources. Frontend renders via MapLibre GL.
+## 5) Padrões de implementação
+- Nunca confiar em `organization` no payload do cliente.
+- Sempre usar `request.active_organization` para filtro e criação.
+- Referências de padrão:
+  - `organizations/permissions.py`
+  - `accounts/views.py`
+  - `projects/views.py`
+  - `data/views.py`
+  - `permissions/views.py`
 
-## Core Multi-Tenancy Rule
+## 6) Validação antes de PR
+- Backend: `python manage.py test -v 2`.
+- Mudanças que impactam integração: validar frontend com `npm run build` e `npm run lint`.
 
-**Organization is the root isolation boundary.** All tenant-owned data MUST have:
-
-```python
-organization = models.ForeignKey(
-    Organization,
-    on_delete=models.CASCADE,
-    db_index=True  # Required for query performance
-)
-```
-
-No org-owned model may exist without this field.
-
-## Active Organization Context (REQUIRED)
-
-**Users may belong to multiple organizations.** The frontend MUST send a header to specify which organization is active:
-
-```
-X-Organization-ID: <uuid>
-```
-
-**Backend middleware MUST:**
-1. Extract `X-Organization-ID` from request headers
-2. Validate user is member of that organization
-3. Attach `request.active_organization` to request object
-
-**Error handling:**
-- Header missing → `400 Bad Request`
-- User not member → `403 Forbidden`
-
-**Never infer organization implicitly** or use `.first()` as it's arbitrary when users have multiple memberships.
-
-### Middleware Implementation (TODO)
-
-Create `organizations/middleware.py`:
-
-```python
-from django.http import JsonResponse
-from organizations.models import Organization, Membership
-
-class ActiveOrganizationMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        # Skip for non-API endpoints or auth endpoints
-        if not request.path.startswith('/api/') or 'token' in request.path:
-            return self.get_response(request)
-        
-        # Skip for unauthenticated requests (will be handled by auth)
-        if not request.user.is_authenticated:
-            return self.get_response(request)
-        
-        org_id = request.headers.get('X-Organization-ID')
-        
-        if not org_id:
-            return JsonResponse(
-                {'error': 'X-Organization-ID header required'},
-                status=400
-            )
-        
-        try:
-            # Validate membership
-            membership = Membership.objects.get(
-                organization_id=org_id,
-                user=request.user
-            )
-            request.active_organization = membership.organization
-            request.active_membership = membership
-        except Membership.DoesNotExist:
-            return JsonResponse(
-                {'error': 'User is not member of specified organization'},
-                status=403
-            )
-        
-        return self.get_response(request)
-```
-
-Add to `config/settings.py`:
-```python
-MIDDLEWARE = [
-    # ... other middleware ...
-    'organizations.middleware.ActiveOrganizationMiddleware',
-]
-```
-
-## Critical Patterns
-
-### Multi-Tenant Query Filtering
-**Every API ViewSet must filter by active organization.** Use `request.active_organization`:
-
-```python
-def get_queryset(self):
-    active_org = self.request.active_organization
-    return self.queryset.filter(organization=active_org)
-```
-
-**For User ViewSet** (users can be in multiple orgs, show only org members):
-```python
-def get_queryset(self):
-    active_org = self.request.active_organization
-    return User.objects.filter(
-        org_memberships__organization=active_org
-    ).distinct()
-```
-
-Apply this to all ViewSets accessing org-owned data (projects, datasources, layers, teams). Never expose cross-org data.
-
-### Organization Enforcement on Create (CRITICAL)
-**NEVER trust organization from request.data**. Always enforce in `perform_create()`:
-
-```python
-def perform_create(self, serializer):
-    # Use active organization from middleware, NEVER from client
-    serializer.save(organization=self.request.active_organization)
-```
-
-**Failure to do this is a tenant data breach vulnerability.**
-
-**Why this matters:**
-- User may belong to multiple organizations
-- Frontend controls which org is active via header
-- Using `.first()` is arbitrary and creates UX bugs
-- Active organization must be explicit, never implicit
-
-### Permission Classes (Required)
-All org-scoped ViewSets MUST include:
-
-```python
-permission_classes = [IsAuthenticated]  # Add IsOrgMember when implemented
-```
-
-For admin-only operations, check `Membership.role == 'ADMIN'` in custom permission classes.
-
-### Custom User Model (Email Authentication)
-[accounts/models.py](accounts/models.py): `User.USERNAME_FIELD = "email"` - authenticate by email, not username.
-
-### JWT Authentication
-Configured in [config/settings.py](config/settings.py#L145-L152). All API endpoints require JWT tokens (`Authorization: Bearer <token>`). Unauthenticated requests return 401.
-
-### GeoDjango Models
-Import from `django.contrib.gis.db import models` for spatial fields. [projects/models.py](projects/models.py) uses `gis_models.GeometryField` for project boundaries.
-
-### Spatial Performance Rules
-All geometry fields MUST use spatial index:
-
-```python
-geom = models.GeometryField(spatial_index=True, srid=4326)
-```
-
-**Performance requirements:**
-- Support bounding box filtering on all spatial querysets
-- Never return full geometries in list endpoints (use `defer('geom')` or simplified versions)
-- Prefer MVT (Mapbox Vector Tiles) or PMTiles for large datasets
-- Never return raster blobs via REST API
-- Use `.simplify()` for geometry previews in listings
-
-### JSON Metadata Fields
-[projects/models.py](projects/models.py#L45-L50) and [data/models.py](data/models.py#L40-L43): Use `JSONField` for flexible styling (MapLibre config) and extensible metadata without schema changes.
-
-### Test Isolation Pattern (Mandatory)
-[accounts/tests/test_api_isolation.py](accounts/tests/test_api_isolation.py): Create separate users, orgs, and memberships per test. Use `client.force_authenticate(user=...)` to set auth context. Assert queries filter correctly (e.g., user from Org A should NOT see Org B data).
-
-**Every org-scoped model MUST include:**
-1. **Isolation test**: User from Org A cannot see Org B data
+## 7) Referências rápidas
+- `config/urls.py`
+- `api/urls.py`
+- `config/settings.py`
+- `api/tests.py`
+- `../frontend/docs/FRONTEND_BUILD_PLAN.md`
 2. **Creation enforcement test**: Cannot create resource with foreign org ID
 3. **Permission test**: Member vs Admin access (when applicable)
 4. **Queryset filtering test**: Verify only active org data returned

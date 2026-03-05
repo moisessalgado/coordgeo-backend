@@ -9,7 +9,10 @@ from data.views import DatasourceViewSet
 from permissions.views import PermissionViewSet
 
 
-# Create a single router for the entire API
+# Create a single router for the API.
+# Mounted by config/urls.py in both:
+# - /api/v1/ (canonical)
+# - /api/ (legacy compatibility)
 router = DefaultRouter()
 
 # Register all viewsets with explicit basenames

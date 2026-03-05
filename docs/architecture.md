@@ -12,7 +12,7 @@ Uma visão técnica da plataforma **coordgeo** - como os componentes se comunica
 │              Envia: X-Organization-ID header                      │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
-                          │ POST /api/projects/
+                          │ POST /api/v1/projects/
                           │ Header: X-Organization-ID: <org-uuid>
                           │ Body: {name, description, geometry}
                           │
@@ -145,7 +145,7 @@ Usuários podem pertencer a **múltiplas organizações**. O contexto ativo é e
 ### Request
 
 ```http
-POST /api/projects/ HTTP/1.1
+POST /api/v1/projects/ HTTP/1.1
 Authorization: Bearer <JWT_TOKEN>
 X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000
 Content-Type: application/json
@@ -215,11 +215,11 @@ router.register(r"permissions", PermissionViewSet)
 ```
 
 Gera URLs padrão CRUD:
-- `GET /api/projects/` - List (paginated)
-- `POST /api/projects/` - Create
-- `GET /api/projects/{id}/` - Retrieve
-- `PUT /api/projects/{id}/` - Update
-- `DELETE /api/projects/{id}/` - Delete
+- `GET /api/v1/projects/` - List (paginated)
+- `POST /api/v1/projects/` - Create
+- `GET /api/v1/projects/{id}/` - Retrieve
+- `PUT /api/v1/projects/{id}/` - Update
+- `DELETE /api/v1/projects/{id}/` - Delete
 
 ---
 
@@ -279,7 +279,7 @@ Configurado com `djangorestframework-simplejwt`:
 ### Flow
 
 ```
-1. POST /api/token/ + email + password
+1. POST /api/v1/token/ + email + password
    → djangorestframework-simplejwt retorna {access, refresh}
 
 2. Cliente armazena access token
@@ -379,7 +379,7 @@ def test_organization_isolation(self):
     """User from Org A cannot see Org B data"""
     self.client.force_authenticate(user=self.user_a)
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
-    response = self.client.get('/api/projects/', **headers)
+    response = self.client.get('/api/v1/projects/', **headers)
     
     project_ids = [p['id'] for p in response.data['results']]
     self.assertNotIn(str(self.project_b.id), project_ids)
@@ -387,14 +387,14 @@ def test_organization_isolation(self):
 def test_missing_organization_header(self):
     """Request without header retorna 400"""
     self.client.force_authenticate(user=self.user_a)
-    response = self.client.get('/api/projects/')  # No header!
+    response = self.client.get('/api/v1/projects/')  # No header!
     self.assertEqual(response.status_code, 400)
 
 def test_unauthorized_organization(self):
     """User not member of org returns 403"""
     self.client.force_authenticate(user=self.user_a)
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}
-    response = self.client.get('/api/projects/', **headers)
+    response = self.client.get('/api/v1/projects/', **headers)
     self.assertEqual(response.status_code, 403)
 ```
 

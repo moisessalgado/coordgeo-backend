@@ -1,5 +1,7 @@
 # 🔌 Guia de API REST
 
+> **Nota de versão de endpoint**: o prefixo canônico desta API é **`/api/v1`**. O prefixo legado **`/api`** permanece apenas como compatibilidade temporária.
+
 Referência completa dos endpoints disponíveis no **coordgeo**. Todos os endpoints requerem:
 
 - **Authentication**: JWT token no header `Authorization: Bearer <token>`
@@ -12,7 +14,7 @@ Referência completa dos endpoints disponíveis no **coordgeo**. Todos os endpoi
 ### Obter Token JWT
 
 ```http
-POST /api/token/ HTTP/1.1
+POST /api/v1/token/ HTTP/1.1
 Content-Type: application/json
 
 {
@@ -32,7 +34,7 @@ Content-Type: application/json
 ### Usar Token
 
 ```http
-GET /api/projects/ HTTP/1.1
+GET /api/v1/projects/ HTTP/1.1
 Authorization: Bearer <access_token>
 X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000
 ```
@@ -40,7 +42,7 @@ X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000
 ### Refresh Token
 
 ```http
-POST /api/token/refresh/ HTTP/1.1
+POST /api/v1/token/refresh/ HTTP/1.1
 Content-Type: application/json
 
 {
@@ -50,14 +52,14 @@ Content-Type: application/json
 
 ---
 
-## 👤 `/api/users/`
+## 👤 `/api/v1/users/`
 
 Gestão de usuários. **Nota**: Usuários podem pertencer a múltiplas orgs.
 
 ### List Dos Usuários
 
 ```http
-GET /api/users/ HTTP/1.1
+GET /api/v1/users/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -66,7 +68,7 @@ X-Organization-ID: <org-uuid>
 ```json
 {
   "count": 42,
-  "next": "http://api.example.com/api/users/?page=2",
+  "next": "http://api.example.com/api/v1/users/?page=2",
   "previous": null,
   "results": [
     {
@@ -90,7 +92,7 @@ X-Organization-ID: <org-uuid>
 ### Obter Usuário
 
 ```http
-GET /api/users/<id>/ HTTP/1.1
+GET /api/v1/users/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -98,7 +100,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Usuário (Admin)
 
 ```http
-POST /api/users/ HTTP/1.1
+POST /api/v1/users/ HTTP/1.1
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -114,7 +116,7 @@ Content-Type: application/json
 ### Atualizar Usuário
 
 ```http
-PUT /api/users/<id>/ HTTP/1.1
+PUT /api/v1/users/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -128,21 +130,21 @@ Content-Type: application/json
 ### Deletar Usuário
 
 ```http
-DELETE /api/users/<id>/ HTTP/1.1
+DELETE /api/v1/users/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
 
 ---
 
-## 🏢 `/api/organizations/`
+## 🏢 `/api/v1/organizations/`
 
 Gestão de organizações. Todos endpoints requerem `X-Organization-ID`.
 
 ### List de Organizações
 
 ```http
-GET /api/organizations/ HTTP/1.1
+GET /api/v1/organizations/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -170,7 +172,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Organização
 
 ```http
-POST /api/organizations/ HTTP/1.1
+POST /api/v1/organizations/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -197,7 +199,7 @@ Content-Type: application/json
 ### Obter Organização
 
 ```http
-GET /api/organizations/<id>/ HTTP/1.1
+GET /api/v1/organizations/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -205,7 +207,7 @@ X-Organization-ID: <org-uuid>
 ### Atualizar Organização
 
 ```http
-PUT /api/organizations/<id>/ HTTP/1.1
+PUT /api/v1/organizations/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -220,7 +222,7 @@ Content-Type: application/json
 ### Deletar Organização
 
 ```http
-DELETE /api/organizations/<id>/ HTTP/1.1
+DELETE /api/v1/organizations/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -229,14 +231,14 @@ X-Organization-ID: <org-uuid>
 
 ---
 
-## 🔗 `/api/memberships/`
+## 🔗 `/api/v1/memberships/`
 
 Gestão de memberships (quem é membro de qual org).
 
 ### List Memberships
 
 ```http
-GET /api/memberships/ HTTP/1.1
+GET /api/v1/memberships/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -260,7 +262,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Membership (Invite)
 
 ```http
-POST /api/memberships/ HTTP/1.1
+POST /api/v1/memberships/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -274,7 +276,7 @@ Content-Type: application/json
 ### Atualizar Membership (Mudar Role)
 
 ```http
-PUT /api/memberships/<id>/ HTTP/1.1
+PUT /api/v1/memberships/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -287,21 +289,21 @@ Content-Type: application/json
 ### Remover Membership
 
 ```http
-DELETE /api/memberships/<id>/ HTTP/1.1
+DELETE /api/v1/memberships/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
 
 ---
 
-## 👥 `/api/teams/`
+## 👥 `/api/v1/teams/`
 
 Sub-grupos dentro de uma organização.
 
 ### List Teams
 
 ```http
-GET /api/teams/ HTTP/1.1
+GET /api/v1/teams/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -325,7 +327,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Team
 
 ```http
-POST /api/teams/ HTTP/1.1
+POST /api/v1/teams/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -339,7 +341,7 @@ Content-Type: application/json
 ### Obter Team
 
 ```http
-GET /api/teams/<id>/ HTTP/1.1
+GET /api/v1/teams/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -347,7 +349,7 @@ X-Organization-ID: <org-uuid>
 ### Atualizar Team
 
 ```http
-PUT /api/teams/<id>/ HTTP/1.1
+PUT /api/v1/teams/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -361,21 +363,21 @@ Content-Type: application/json
 ### Deletar Team
 
 ```http
-DELETE /api/teams/<id>/ HTTP/1.1
+DELETE /api/v1/teams/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
 
 ---
 
-## 🗺️ `/api/projects/`
+## 🗺️ `/api/v1/projects/`
 
 Projetos geoespaciais - containers para layers.
 
 ### List Projects
 
 ```http
-GET /api/projects/ HTTP/1.1
+GET /api/v1/projects/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -410,7 +412,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Project
 
 ```http
-POST /api/projects/ HTTP/1.1
+POST /api/v1/projects/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -443,7 +445,7 @@ Content-Type: application/json
 ### Obter Project
 
 ```http
-GET /api/projects/<id>/ HTTP/1.1
+GET /api/v1/projects/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -451,7 +453,7 @@ X-Organization-ID: <org-uuid>
 ### Atualizar Project
 
 ```http
-PATCH /api/projects/<id>/ HTTP/1.1
+PATCH /api/v1/projects/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -465,7 +467,7 @@ Content-Type: application/json
 ### Deletar Project
 
 ```http
-DELETE /api/projects/<id>/ HTTP/1.1
+DELETE /api/v1/projects/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -474,14 +476,14 @@ X-Organization-ID: <org-uuid>
 
 ---
 
-## 📍 `/api/layers/`
+## 📍 `/api/v1/layers/`
 
 Representações contextuais de datasources dentro de projetos.
 
 ### List Layers
 
 ```http
-GET /api/layers/ HTTP/1.1
+GET /api/v1/layers/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -521,7 +523,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Layer
 
 ```http
-POST /api/layers/ HTTP/1.1
+POST /api/v1/layers/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -544,7 +546,7 @@ Content-Type: application/json
 ### Obter Layer
 
 ```http
-GET /api/layers/<id>/ HTTP/1.1
+GET /api/v1/layers/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -552,7 +554,7 @@ X-Organization-ID: <org-uuid>
 ### Atualizar Layer
 
 ```http
-PATCH /api/layers/<id>/ HTTP/1.1
+PATCH /api/v1/layers/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -567,21 +569,21 @@ Content-Type: application/json
 ### Deletar Layer
 
 ```http
-DELETE /api/layers/<id>/ HTTP/1.1
+DELETE /api/v1/layers/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
 
 ---
 
-## 📊 `/api/datasources/`
+## 📊 `/api/v1/datasources/`
 
 Fontes de dados compartilhadas entre projetos. Suporta Vector, Raster, PMTiles, MVT.
 
 ### List Datasources
 
 ```http
-GET /api/datasources/ HTTP/1.1
+GET /api/v1/datasources/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -618,7 +620,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Datasource
 
 ```http
-POST /api/datasources/ HTTP/1.1
+POST /api/v1/datasources/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -640,7 +642,7 @@ Content-Type: application/json
 ### Obter Datasource
 
 ```http
-GET /api/datasources/<id>/ HTTP/1.1
+GET /api/v1/datasources/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -648,7 +650,7 @@ X-Organization-ID: <org-uuid>
 ### Atualizar Datasource
 
 ```http
-PATCH /api/datasources/<id>/ HTTP/1.1
+PATCH /api/v1/datasources/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -663,7 +665,7 @@ Content-Type: application/json
 ### Deletar Datasource
 
 ```http
-DELETE /api/datasources/<id>/ HTTP/1.1
+DELETE /api/v1/datasources/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -672,14 +674,14 @@ X-Organization-ID: <org-uuid>
 
 ---
 
-## 🔒 `/api/permissions/`
+## 🔒 `/api/v1/permissions/`
 
 Permissões granulares em recursos específicos.
 
 ### List Permissions
 
 ```http
-GET /api/permissions/ HTTP/1.1
+GET /api/v1/permissions/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -705,7 +707,7 @@ X-Organization-ID: <org-uuid>
 ### Criar Permission
 
 ```http
-POST /api/permissions/ HTTP/1.1
+POST /api/v1/permissions/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 Content-Type: application/json
@@ -721,7 +723,7 @@ Content-Type: application/json
 ### Deletar Permission
 
 ```http
-DELETE /api/permissions/<id>/ HTTP/1.1
+DELETE /api/v1/permissions/<id>/ HTTP/1.1
 Authorization: Bearer <token>
 X-Organization-ID: <org-uuid>
 ```
@@ -798,15 +800,15 @@ Causas:
 Todas list endpoints suportam paginação com size 50 itens/página:
 
 ```http
-GET /api/projects/?page=2 HTTP/1.1
+GET /api/v1/projects/?page=2 HTTP/1.1
 ```
 
 **Response**:
 ```json
 {
   "count": 123,
-  "next": "http://api.example.com/api/projects/?page=3",
-  "previous": "http://api.example.com/api/projects/?page=1",
+  "next": "http://api.example.com/api/v1/projects/?page=3",
+  "previous": "http://api.example.com/api/v1/projects/?page=1",
   "results": [...]
 }
 ```
@@ -818,7 +820,7 @@ GET /api/projects/?page=2 HTTP/1.1
 ### Search
 
 ```http
-GET /api/projects/?search=amazon HTTP/1.1
+GET /api/v1/projects/?search=amazon HTTP/1.1
 ```
 
 Busca em `name` e `description`.
@@ -826,7 +828,7 @@ Busca em `name` e `description`.
 ### Ordering
 
 ```http
-GET /api/projects/?ordering=-created_at HTTP/1.1
+GET /api/v1/projects/?ordering=-created_at HTTP/1.1
 ```
 
 Ordena por `-created_at` (descendente) ou qualquer campo.
@@ -834,7 +836,7 @@ Ordena por `-created_at` (descendente) ou qualquer campo.
 ### Type Filter
 
 ```http
-GET /api/datasources/?datasource_type=raster HTTP/1.1
+GET /api/v1/datasources/?datasource_type=raster HTTP/1.1
 ```
 
 ---
@@ -871,7 +873,7 @@ Tipos suportados: `Point`, `LineString`, `Polygon`, `MultiPoint`, `MultiLineStri
 ### Obter Token
 
 ```javascript
-const response = await fetch('http://localhost:8000/api/token/', {
+const response = await fetch('http://localhost:8000/api/v1/token/', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -890,7 +892,7 @@ localStorage.setItem('org_id', 'org-uuid');
 const orgId = localStorage.getItem('org_id');
 const token = localStorage.getItem('access_token');
 
-const response = await fetch('http://localhost:8000/api/projects/', {
+const response = await fetch('http://localhost:8000/api/v1/projects/', {
   headers: {
     'Authorization': `Bearer ${token}`,
     'X-Organization-ID': orgId
@@ -902,7 +904,7 @@ const projects = await response.json();
 ### Criar Projeto
 
 ```javascript
-const response = await fetch('http://localhost:8000/api/projects/', {
+const response = await fetch('http://localhost:8000/api/v1/projects/', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${token}`,

@@ -21,15 +21,15 @@ Todos endpoints usam JWT Bearer token e (exceto login/bootstrap) requerem header
 ### Authentication & Bootstrap (sem X-Organization-ID)
 
 ```
-POST /api/token/
+POST /api/v1/token/
 Body: { email, password }
 Response: { access, refresh }
 
-POST /api/token/refresh/
+POST /api/v1/token/refresh/
 Body: { refresh }
 Response: { access }
 
-GET /api/user/organizations/
+GET /api/v1/user/organizations/
 Headers: Authorization: Bearer <access_token>
 Response: [{ id, name, slug, description, org_type, plan, created_at }, ...]
 ```
@@ -40,7 +40,7 @@ Todos endpoints retornam formato paginado:
 ```json
 {
   "count": 42,
-  "next": "http://localhost:8000/api/projects/?page=2",
+  "next": "http://localhost:8000/api/v1/projects/?page=2",
   "previous": null,
   "results": [...]
 }
@@ -48,7 +48,7 @@ Todos endpoints retornam formato paginado:
 
 **Projects** (listagem da organização ativa)
 ```
-GET /api/projects/
+GET /api/v1/projects/
 Headers: 
   - Authorization: Bearer <token>
   - X-Organization-ID: <org_uuid>
@@ -57,7 +57,7 @@ Response: { count, next, previous, results: [{ id, name, description, geometry, 
 
 **Layers** (camadas do mapa)
 ```
-GET /api/layers/
+GET /api/v1/layers/
 Headers: 
   - Authorization: Bearer <token>
   - X-Organization-ID: <org_uuid>
@@ -79,7 +79,7 @@ Response: { count, next, previous, results: [
 
 **Datasources** (fontes de dados - tiles, geojson, raster)
 ```
-GET /api/datasources/
+GET /api/v1/datasources/
 Headers: 
   - Authorization: Bearer <token>
   - X-Organization-ID: <org_uuid>
@@ -197,7 +197,7 @@ import axios from 'axios';
 import { useAuthStore } from '../state/authStore';
 
 const api = axios.create({
-  baseURL: process.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: process.env.VITE_API_URL || 'http://localhost:8000/api/v1',
 });
 
 // Request interceptor: adicionar tokens e org header
@@ -236,13 +236,13 @@ export default api;
 ```
 Login Page
     ↓ (email + password)
-POST /api/token/ 
+POST /api/v1/token/ 
     ↓ (access + refresh tokens)
 authStore.setTokens()
     ↓
 Org Selection Page
     ↓ (sem X-Organization-ID, usa token)
-GET /api/user/organizations/
+GET /api/v1/user/organizations/
     ↓ (lista de orgs)
 User selects org
     ↓
@@ -250,18 +250,18 @@ orgStore.setActiveOrg()
     ↓
 Redirect to Map
     ↓ (com JWT + X-Organization-ID header)
-GET /api/projects/
-GET /api/layers/
-GET /api/datasources/
+GET /api/v1/projects/
+GET /api/v1/layers/
+GET /api/v1/datasources/
     ↓
 Render Map with layers
 ```
 
 ## Map Rendering Logic
 
-1. **Fetch projectos**: GET /api/projects/ → pegar geometry para zoom inicial
-2. **Fetch datasources**: GET /api/datasources/ → mapear ID → URL
-3. **Fetch layers**: GET /api/layers/ → construir MapLibre GL spec
+1. **Fetch projectos**: GET /api/v1/projects/ → pegar geometry para zoom inicial
+2. **Fetch datasources**: GET /api/v1/datasources/ → mapear ID → URL
+3. **Fetch layers**: GET /api/v1/layers/ → construir MapLibre GL spec
 4. **Build MapLibre spec**:
    ```typescript
    {
@@ -305,7 +305,7 @@ Render Map with layers
 ## Environment Variables
 
 ```
-VITE_API_URL=http://localhost:8000/api
+VITE_API_URL=http://localhost:8000/api/v1
 VITE_MAP_STYLE=https://demotiles.maplibre.org/style.json
 ```
 
@@ -325,7 +325,7 @@ VITE_MAP_STYLE=https://demotiles.maplibre.org/style.json
 ## Production Deployment
 
 - [ ] Build: `npm run build`
-- [ ] Serve: nginx + reverse proxy para `/api` → backend
+- [ ] Serve: nginx + reverse proxy para `/api/v1` → backend
 - [ ] CORS: Backend já configurado para `https://app.example.com`
 - [ ] Environment: `.env.production` com corretos `VITE_API_URL`
 
