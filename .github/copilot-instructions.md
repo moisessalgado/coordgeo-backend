@@ -89,7 +89,7 @@ def test_unauthorized_organization(self):
 - Use spatial indexes on all geometry fields (see Spatial Performance Rules)
 - Test database must use PostGIS template
 
-**Connection** [config/settings.py](config/settings.py#L97-L110):
+**Connection** [config/settings.py](../config/settings.py#L97-L110):
 - Host: localhost, Port: 5432, Name: geodjango
 - Credentials: User `django` / Password stored in settings (dev-only)
 - Test DB uses PostGIS template: `template_postgis`
@@ -101,7 +101,7 @@ sudo apt install binutils libproj-dev gdal-bin libgdal-dev libgeos-dev libpq-dev
 
 ## API Structure
 
-**Router-based DRF** [api/urls.py](api/urls.py): Single `DefaultRouter` registers all ViewSets → auto-generates URL patterns (`/api/users/`, `/api/organizations/`, etc.).
+**Router-based DRF** [api/urls.py](../api/urls.py): Single `DefaultRouter` registers all ViewSets → auto-generates URL patterns (`/api/users/`, `/api/organizations/`, etc.).
 
 **Registered endpoints**:
 - `/api/users/` → UserViewSet
@@ -239,6 +239,6 @@ When implementing creation endpoints, consider adding quota validation hooks for
 ## Key Files Reference
 
 - **Models**: [accounts/models.py](accounts/models.py) (User), [organizations/models.py](organizations/models.py) (Org/Team/Membership), [projects/models.py](projects/models.py) (Project/Layer), [data/models.py](data/models.py) (Datasource)
-- **API Configuration**: [config/settings.py](config/settings.py), [api/urls.py](api/urls.py)
+- **API Configuration**: [config/settings.py](../config/settings.py), [api/urls.py](../api/urls.py)
 - **Tests**: [accounts/tests/test_api_isolation.py](accounts/tests/test_api_isolation.py) (multi-tenant pattern example)
 - **Frontend**: [templates/core/map.html](templates/core/map.html) (MapLibre GL integration)
