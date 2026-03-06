@@ -57,9 +57,8 @@ class UserOrganizationsView(APIView):
     Usado no bootstrap do frontend para permitir que o usuário selecione
     qual organização deseja usar (sem paradoxo de header obrigatório).
     
-    Filtra organizações:
-    - Para usuários freemium: exclui organizações PERSONAL (invisíveis)
-    - Para usuários PRO: mostra todas as organizações
+    Retorna TODAS as organizações (membros + owned).
+    Filtragem de visibilidade (esconder PERSONAL, etc) fica para o frontend.
     
     Não requer X-Organization-ID header.
     """
@@ -67,21 +66,15 @@ class UserOrganizationsView(APIView):
     
     def get(self, request):
         # Retorna todas as organizações do usuário autenticado
+        # Combina:
+        # 1. Organizações onde é membro (via Membership)
+        # 2. Organizações que ele criou (owned_organizations)
+        from django.db.models import Q
+        
         organizations = Organization.objects.filter(
-            members__user=request.user
+            Q(members__user=request.user) |  # Membro de organização
+            Q(owner=request.user)            # Proprietário de organização
         ).distinct()
-        
-        # Filtrar organizações PERSONAL FREE (invisíveis para freemium)
-        # Somente usuários com pelo menos uma org PRO/ENTERPRISE veem todas
-        has_premium_org = organizations.filter(
-            plan__in=[Organization.Plan.PRO, Organization.Plan.ENTERPRISE]
-        ).exists()
-        
-        if not has_premium_org:
-            # Usuário freemium: esconder organizações PERSONAL
-            organizations = organizations.exclude(
-                org_type=Organization.OrgType.PERSONAL
-            )
         
         serializer = OrganizationSerializer(organizations, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

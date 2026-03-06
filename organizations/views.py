@@ -19,6 +19,88 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             raise ValueError("active_organization not set - permission check failed?")
         return Organization.objects.filter(id=active_org.id)
 
+    def perform_create(self, serializer):
+        """
+        Criar uma nova organização.
+        Restrições:
+        - TEAM orgs só podem ser criadas por users com plano PRO
+        - User será automaticamente o owner
+        """
+        from django.db.models import Q
+        from rest_framework.exceptions import PermissionDenied
+        
+        org_type = serializer.validated_data.get('org_type', Organization.OrgType.TEAM)
+        
+        # Apenas TEAM orgs podem ser criadas via API na prática
+        # (PERSONAL são criadas automaticamente no signup)
+        if org_type == Organization.OrgType.TEAM:
+            # Verificar se user tem pelo menos uma organização PRO
+            user_orgs = Organization.objects.filter(
+                Q(owner=self.request.user) | Q(members__user=self.request.user)
+            ).distinct()
+            
+            has_pro_plan = user_orgs.filter(plan=Organization.Plan.PRO).exists()
+            has_enterprise = user_orgs.filter(plan=Organization.Plan.ENTERPRISE).exists()
+            
+            if not has_pro_plan and not has_enterprise:
+                raise PermissionDenied(
+                    'Você precisa ter plano PRO para criar organizações em equipe. '
+                    'Faça upgrade de uma organização existente primeiro.'
+                )
+        
+        # User será o owner da nova organização
+        serializer.save(owner=self.request.user)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def create_team(self, request):
+        """
+        Criar uma nova organização TEAM.
+        Requer plano PRO em pelo menos uma organização existente.
+        
+        POST /organizations/create-team/
+        Body: { "name": "...", "slug": "...", "description": "..." }
+        """
+        from django.db.models import Q
+        from rest_framework.exceptions import PermissionDenied
+        
+        # Verificar se user tem pelo menos uma organização PRO
+        user_orgs = Organization.objects.filter(
+            Q(owner=request.user) | Q(members__user=request.user)
+        ).distinct()
+        
+        has_pro_plan = user_orgs.filter(plan=Organization.Plan.PRO).exists()
+        has_enterprise = user_orgs.filter(plan=Organization.Plan.ENTERPRISE).exists()
+        
+        if not has_pro_plan and not has_enterprise:
+            raise PermissionDenied(
+                'Você precisa ter plano PRO para criar organizações em equipe. '
+                'Faça upgrade de uma organização existente primeiro.'
+            )
+        
+        # Criar a nova TEAM org
+        serializer = OrganizationSerializer(data=request.data)
+        if serializer.is_valid():
+            # Garantir que é TEAM org
+            serializer.validated_data['org_type'] = Organization.OrgType.TEAM
+            serializer.validated_data['plan'] = Organization.Plan.FREE  # Starts as FREE
+            serializer.validated_data['owner'] = request.user
+            
+            org = serializer.save()
+            
+            # Criar membership automático como admin
+            Membership.objects.create(
+                user=request.user,
+                organization=org,
+                role=Membership.Role.ADMIN
+            )
+            
+            return Response(
+                OrganizationSerializer(org).data,
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsOrgMember])
     def upgrade(self, request, pk=None):
         """
