@@ -1,5 +1,6 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
+import json
 from accounts.models import User
 from organizations.models import Organization, Membership
 
@@ -30,6 +31,7 @@ class OrganizationUpgradeTest(APITestCase):
             name="Test Org",
             slug="test-org-upgrade",
             owner=self.user_admin,
+            org_type=Organization.OrgType.TEAM,
             plan=Organization.Plan.FREE
         )
 
@@ -52,7 +54,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "pro"},
+            json.dumps({"plan": "pro"}),
+            content_type='application/json',
             **headers
         )
 
@@ -70,7 +73,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "pro"},
+            json.dumps({"plan": "pro"}),
+            content_type='application/json',
             **headers
         )
 
@@ -87,7 +91,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "pro"},
+            json.dumps({"plan": "pro"}),
+            content_type='application/json',
             **headers
         )
 
@@ -100,7 +105,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {},
+            json.dumps({}),
+            content_type='application/json',
             **headers
         )
 
@@ -113,7 +119,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "invalid-plan"},
+            json.dumps({"plan": "invalid-plan"}),
+            content_type='application/json',
             **headers
         )
 
@@ -140,7 +147,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{personal_org.id}/upgrade/",
-            {"plan": "pro"},
+            json.dumps({"plan": "pro"}),
+            content_type='application/json',
             **headers
         )
 
@@ -156,7 +164,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "pro"}
+            json.dumps({"plan": "pro"}),
+            content_type='application/json'
         )
 
         self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
@@ -168,7 +177,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/organizations/{self.org.id}/upgrade/",
-            {"plan": "enterprise"},
+            json.dumps({"plan": "enterprise"}),
+            content_type='application/json',
             **headers
         )
 
