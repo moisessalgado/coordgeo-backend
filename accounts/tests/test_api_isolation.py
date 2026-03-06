@@ -122,3 +122,14 @@ class AccountsAPIIsolationTest(JWTAuthTestMixin, APITestCase):
         response = self.client.get("/api/v1/users/", **headers)
 
         self._assert_status(response, status.HTTP_403_FORBIDDEN, "Org não autorizada")
+
+    def test_05_user_profile_does_not_require_org_header(self):
+        """[Profile] Usuário autenticado deve acessar o próprio perfil sem header de organização."""
+        token_a = self.get_jwt_token(self.user_a)
+        headers = {'HTTP_AUTHORIZATION': f'Bearer {token_a}'}
+
+        response = self.client.get("/api/v1/user/profile/", **headers)
+
+        self._assert_status(response, status.HTTP_200_OK, "Perfil do usuário")
+        self.assertEqual(response.data["email"], self.user_a.email)
+        self.assertEqual(response.data["username"], self.user_a.username)

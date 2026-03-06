@@ -80,6 +80,27 @@ class UserOrganizationsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class UserProfileView(APIView):
+    """
+    Retorna informações básicas do usuário autenticado.
+
+    Não requer X-Organization-ID header.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response(
+            {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'display_name': user.get_full_name() or user.username or user.email,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class UserDefaultOrganizationView(APIView):
     """
     Retorna a organização padrão do usuário (primeira PERSONAL ou primeira da lista).

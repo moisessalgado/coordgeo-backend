@@ -126,8 +126,8 @@ class OrganizationUpgradeTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_personal_org_cannot_upgrade_from_free(self):
-        """Personal organizations can only use FREE plan"""
+    def test_personal_org_can_upgrade_to_pro(self):
+        """Personal organization acts as the user's subscription anchor and can upgrade to PRO."""
         # Create personal org
         personal_org = Organization.objects.create(
             name="Personal Org",
@@ -152,11 +152,11 @@ class OrganizationUpgradeTest(APITestCase):
             **headers
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        # Verify plan didn't change
+        # Verify plan changed
         personal_org.refresh_from_db()
-        self.assertEqual(personal_org.plan, Organization.Plan.FREE)
+        self.assertEqual(personal_org.plan, Organization.Plan.PRO)
 
     def test_upgrade_requires_org_header(self):
         """Upgrade endpoint should require X-Organization-ID header"""
@@ -187,3 +187,100 @@ class OrganizationUpgradeTest(APITestCase):
         
         self.org.refresh_from_db()
         self.assertEqual(self.org.plan, Organization.Plan.ENTERPRISE)
+
+    def test_user_cannot_create_team_org_without_pro(self):
+        """Freemium users cannot create an additional organization."""
+        personal_org = Organization.objects.create(
+            name="Personal Org Create Team",
+            slug="personal-org-create-team",
+            owner=self.user_other,
+            org_type=Organization.OrgType.PERSONAL,
+            plan=Organization.Plan.FREE,
+        )
+        Membership.objects.create(
+            user=self.user_other,
+            organization=personal_org,
+            role=Membership.Role.ADMIN,
+        )
+
+        self.client.force_authenticate(user=self.user_other)
+        response = self.client.post(
+            "/api/v1/organizations/create-team/",
+            json.dumps({
+                "name": "Nova Team",
+                "slug": "nova-team",
+                "description": "Org de equipe inicial",
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_create_single_team_org_after_personal_upgrade(self):
+        """A PRO user can create one additional TEAM organization."""
+        personal_org = Organization.objects.create(
+            name="Personal Org Second Team",
+            slug="personal-org-second-team",
+            owner=self.user_other,
+            org_type=Organization.OrgType.PERSONAL,
+            plan=Organization.Plan.PRO,
+        )
+        Membership.objects.create(
+            user=self.user_other,
+            organization=personal_org,
+            role=Membership.Role.ADMIN,
+        )
+
+        self.client.force_authenticate(user=self.user_other)
+        response = self.client.post(
+            "/api/v1/organizations/create-team/",
+            json.dumps({
+                "name": "First Team",
+                "slug": "first-team",
+                "description": "Outra org de equipe",
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['plan'], Organization.Plan.PRO)
+
+    def test_user_cannot_create_second_team_org_even_with_pro(self):
+        """PRO users are limited to one additional TEAM organization."""
+        personal_org = Organization.objects.create(
+            name="Personal Org Additional Limit",
+            slug="personal-org-additional-limit",
+            owner=self.user_other,
+            org_type=Organization.OrgType.PERSONAL,
+            plan=Organization.Plan.PRO,
+        )
+        first_team_org = Organization.objects.create(
+            name="First Team Org",
+            slug="first-team-org-limit",
+            owner=self.user_other,
+            org_type=Organization.OrgType.TEAM,
+            plan=Organization.Plan.PRO,
+        )
+        Membership.objects.create(
+            user=self.user_other,
+            organization=personal_org,
+            role=Membership.Role.ADMIN,
+        )
+        Membership.objects.create(
+            user=self.user_other,
+            organization=first_team_org,
+            role=Membership.Role.ADMIN,
+        )
+
+        self.client.force_authenticate(user=self.user_other)
+        response = self.client.post(
+            "/api/v1/organizations/create-team/",
+            json.dumps({
+                "name": "Second Team",
+                "slug": "second-team",
+                "description": "Outra org de equipe",
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

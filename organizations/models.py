@@ -52,9 +52,7 @@ class Organization(models.Model):
         return f"{self.name} ({self.get_org_type_display()})"
 
     def clean(self):
-        # use TextChoices constants for comparisons
-        if self.org_type == Organization.OrgType.PERSONAL and self.plan != Organization.Plan.FREE:
-            raise ValidationError(_("Personal organizations must use the free plan."))
+        super().clean()
 
 
 class Membership(models.Model):
