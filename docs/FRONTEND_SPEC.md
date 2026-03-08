@@ -6,13 +6,14 @@ Frontend SPA separado em React + Vite que consome APIs multi-tenant do backend D
 
 ## Tech Stack
 
-- **Frontend**: React 18+ (TSX)
+- **Frontend**: React 19+ (TSX)
 - **Build Tool**: Vite
-- **State Management**: React Context + Zustand (para simplificar)
+- **State Management**: Zustand
 - **HTTP Client**: axios com interceptadores para JWT + X-Organization-ID
-- **Map Library**: MapLibre GL JS
+- **Map Library**: MapLibre GL JS + maplibre-gl-draw
+- **Geoprocessamento cliente**: @turf/turf
 - **Auth**: JWT (access + refresh tokens)
-- **Style**: Tailwind CSS (recomendado)
+- **Style**: Tailwind CSS v4 via `@tailwindcss/vite`
 
 ## API Endpoint Reference
 
@@ -29,9 +30,21 @@ POST /api/v1/token/refresh/
 Body: { refresh }
 Response: { access }
 
+POST /api/v1/auth/register/
+Body: { email, password, username? }
+Response: { id, email, username }
+
+GET /api/v1/user/profile/
+Headers: Authorization: Bearer <access_token>
+Response: { id, email, username, display_name }
+
 GET /api/v1/user/organizations/
 Headers: Authorization: Bearer <access_token>
-Response: [{ id, name, slug, description, org_type, plan, created_at }, ...]
+Response: [{ id, name, slug, description, org_type, plan, owner, created_at, updated_at }, ...]
+
+GET /api/v1/user/default-organization/
+Headers: Authorization: Bearer <access_token>
+Response: { id, name, slug, ... } ou 404
 ```
 
 ### Core Multi-Tenant Endpoints (com X-Organization-ID)
@@ -87,7 +100,7 @@ Response: { count, next, previous, results: [
   {
     id,
     name,
-    datasource_type,   // "pmtiles" | "mvt" | "geojson" | "raster"
+    datasource_type,   // "vector" | "raster" | "pmtiles" | "mvt"
     storage_url,       // URL ou path (ex: "pmtiles:///static/tiles/car_sc.pmtiles")
     metadata,          // zoom_levels, projection, etc.
     is_public
@@ -105,18 +118,30 @@ src/
 ├── components/
 │   ├── Auth/
 │   │   ├── LoginForm.tsx
-│   │   └── OrgSelector.tsx
+│   │   ├── OrgSelector.tsx
+│   │   └── SignupForm.tsx
 │   ├── Map/
 │   │   ├── MapContainer.tsx
+│   │   ├── DrawControls.tsx
+│   │   ├── CreateLayerModal.tsx
+│   │   ├── EditLayerModal.tsx
+│   │   ├── DeleteLayerModal.tsx
+│   │   ├── FeatureDetailsPanel.tsx
 │   │   ├── LayerToggle.tsx
-│   │   └── MapLibreGL.tsx
-│   └── Layout/
-│       ├── Header.tsx
-│       └── Sidebar.tsx
+│   ├── Projects/
+│   │   ├── ProjectForm.tsx
+│   │   ├── CreateProjectModal.tsx
+│   │   └── ProjectList.tsx
+│   └── Organizations/
+│       └── CreateTeamModal.tsx
 ├── pages/
+│   ├── LandingPage.tsx
+│   ├── SignupPage.tsx
 │   ├── LoginPage.tsx
 │   ├── OrgSelectPage.tsx
-│   └── MapPage.tsx
+│   ├── MapPage.tsx
+│   ├── SettingsPage.tsx
+│   └── UpgradePage.tsx
 ├── services/
 │   ├── api.ts              // axios instance com interceptadores
 │   ├── auth.ts             // funções de login/logout
@@ -144,7 +169,7 @@ public/
 {
   accessToken: string | null,
   refreshToken: string | null,
-  user: User | null,
+  userProfile: User | null,
   isLoading: boolean,
   error: string | null,
   
@@ -161,13 +186,15 @@ public/
 {
   activeOrgId: string | null,
   organizations: Organization[],
+  isFreemium: boolean,
   isLoading: boolean,
   error: string | null,
   
   // Actions
   setActiveOrg(orgId: string): void,
   fetchUserOrganizations(): Promise<void>,
-  setOrganizations(orgs): void,
+  fetchAndSetDefaultOrg(): Promise<void>,
+  resolveAndSetActiveOrg(): Promise<string | null>,
 }
 ```
 
@@ -177,15 +204,19 @@ public/
   projects: Project[],
   layers: Layer[],
   datasources: Datasource[],
-  visibleLayers: Set<string>,
+  hiddenLayerIds: Set<string>,
+  activeProjectId: string | null,
+  projectScopeKey: string | null,
   isLoading: boolean,
   error: string | null,
   
   // Actions
-  fetchProjects(orgId): Promise<void>,
-  fetchLayers(orgId): Promise<void>,
-  fetchDatasources(orgId): Promise<void>,
-  toggleLayerVisibility(layerId): void,
+  fetchMapData(): Promise<void>,
+  setProjectScope(scopeKey: string | null): void,
+  setActiveProject(projectId: string | null): void,
+  syncActiveProject(projects: Project[]): void,
+  toggleLayerVisibility(layerId: string): void,
+  isLayerVisible(layerId: string): boolean,
 }
 ```
 
@@ -194,36 +225,38 @@ public/
 ```typescript
 // src/services/api.ts
 import axios from 'axios';
-import { useAuthStore } from '../state/authStore';
 
 const api = axios.create({
-  baseURL: process.env.VITE_API_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
 });
 
-// Request interceptor: adicionar tokens e org header
+// Endpoints sem header de organização
+const unaffiliatedPaths = [
+  '/token/',
+  '/token/refresh/',
+  '/auth/register/',
+  '/user/profile/',
+  '/user/organizations/',
+  '/user/default-organization/',
+  '/organizations/create-team/',
+]
+
+// Request interceptor: adicionar tokens e org header quando necessário
 api.interceptors.request.use((config) => {
-  const { accessToken } = useAuthStore.getState();
-  const { activeOrgId } = useOrgStore.getState();
-  
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-  
-  if (activeOrgId) {
+  const requiresOrg = !unaffiliatedPaths.some((path) => (config.url || '').includes(path))
+  if (requiresOrg && activeOrgId) {
     config.headers['X-Organization-ID'] = activeOrgId;
   }
   
   return config;
 });
 
-// Response interceptor: refresh token on 401
+// Response interceptor: refresh token on 401 + retry automático para erro de rede em GET/HEAD/OPTIONS
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      const { refreshToken } = useAuthStore.getState();
-      // Fazer refresh e retry
-    }
+    // implementação real possui retry de rede idempotente (limite 2)
+    // e refresh de token quando status = 401
     return Promise.reject(error);
   }
 );
@@ -239,16 +272,12 @@ Login Page
 POST /api/v1/token/ 
     ↓ (access + refresh tokens)
 authStore.setTokens()
-    ↓
-Org Selection Page
-    ↓ (sem X-Organization-ID, usa token)
-GET /api/v1/user/organizations/
-    ↓ (lista de orgs)
-User selects org
-    ↓
-orgStore.setActiveOrg()
-    ↓
-Redirect to Map
+  ↓ (bootstrap sem X-Organization-ID)
+orgStore.resolveAndSetActiveOrg()
+  ↓
+se houver org ativa: redirect para /map
+  ↓
+se nao houver org ativa: redirect para /select-org
     ↓ (com JWT + X-Organization-ID header)
 GET /api/v1/projects/
 GET /api/v1/layers/
@@ -259,32 +288,13 @@ Render Map with layers
 
 ## Map Rendering Logic
 
-1. **Fetch projectos**: GET /api/v1/projects/ → pegar geometry para zoom inicial
-2. **Fetch datasources**: GET /api/v1/datasources/ → mapear ID → URL
-3. **Fetch layers**: GET /api/v1/layers/ → construir MapLibre GL spec
-4. **Build MapLibre spec**:
-   ```typescript
-   {
-     version: 8,
-     sources: {
-       [datasource.id]: {
-         type: layer.datasource_type,
-         url: layer.datasource.storage_url,
-         // zoom levels, etc. from datasource.metadata
-       }
-     },
-     layers: layers.map(layer => ({
-       id: layer.id,
-       source: layer.datasource_id,
-       layout: layer.style_config?.layout,
-       paint: layer.style_config?.paint,
-       visibility: layer.visibility ? "visible" : "none",
-       "z-index": layer.z_index,
-     }))
-   }
-   ```
-5. **Render**: MapLibre GL consume spec → mapa renderizado
-6. **Toggle visibility**: Click em layer → toggle `visibility` → atualizar MapLibre state
+1. **Fetch paginado completo**: requests para `/projects/`, `/layers/`, `/datasources/` agregando todas as paginas DRF.
+2. **Normalizacao cliente**: mapear IDs numericos para `string` e adaptar payload (`project` -> `project_id`, `datasource` -> `datasource_id`).
+3. **Inicializacao do mapa**: `MapContainer` cria instancia MapLibre com estilo de `VITE_MAP_STYLE`.
+4. **Sync dinamico**: remove fontes/camadas dinamicas antigas, adiciona sources por datasource e layers por `z_index`.
+5. **Style por camada**: `style_config` define `type/layout/paint`; fallback por tipo de datasource (`raster`, `vector`, GeoJSON inline).
+6. **Visibilidade local**: `toggleLayerVisibility` controla `hiddenLayerIds` e aplica `layout.visibility` em runtime.
+7. **Zoom inicial**: bounds derivados de `project.geometry`; fallback para bounds do Brasil quando nao ha geometria.
 
 ## Error Handling Strategy
 
@@ -293,12 +303,11 @@ Render Map with layers
 1. 401 Unauthorized → Redirect to login
 2. 403 Forbidden (X-Organization-ID) → Show error: "Org access denied"
 3. 400 Bad Request (missing X-Organization-ID) → Show error: "Org selection required"
-4. Network error → Retry com exponential backoff
+4. Network error (somente idempotentes) → Retry com backoff incremental
 5. API error (5xx) → Show user-friendly error + log to service
 
 // User feedback
-- Toast notifications para erros transientes
-- Modal para erros críticos (auth, org)
+- Mensagens user-friendly por contexto (auth/org/map)
 - Spinner durante loading
 ```
 
@@ -313,11 +322,11 @@ VITE_MAP_STYLE=https://demotiles.maplibre.org/style.json
 
 - [ ] git init + setup gitignore
 - [ ] npm create vite@latest -- --template react-ts
-- [ ] Instalar: react-router-dom, axios, zustand, maplibre-gl, tailwindcss
+- [ ] Instalar: react-router-dom, axios, zustand, maplibre-gl, maplibre-gl-draw, @turf/turf
 - [ ] Setup state management (authStore, orgStore, mapStore)
 - [ ] Implementar api.ts com interceptadores
 - [ ] Criar LoginForm component
-- [ ] Criar OrgSelector component
+- [ ] Criar OrgSelector component (ou fluxo equivalente em `OrgSelectPage`)
 - [ ] Criar MapContainer component com MapLibre GL
 - [ ] Implementar mobile-first layout
 - [ ] Setup CI/CD (GitHub Actions)

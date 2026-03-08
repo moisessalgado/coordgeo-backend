@@ -27,7 +27,7 @@ coordgeo é uma solução enterprise-ready para análise, visualização e colab
 1. Clone o repositório:
 ```bash
 git clone https://github.com/moisessalgado/coordgeo.git
-cd coordgeo/backend
+cd coordgeo/coordgeo-backend
 ```
 
 2. Crie um virtualenv:
@@ -63,7 +63,7 @@ python manage.py runserver
 
 ## 📖 Documentação
 
-Veja o guia de arquitetura completo em [.github/copilot-instructions.md](.github/copilot-instructions.md) para:
+Veja a documentação técnica em [`docs/`](docs/) para:
 - Padrões de isolamento multi-tenant
 - Contexto ativo de organização
 - Regras de performance geoespacial
@@ -97,8 +97,7 @@ python manage.py test -v 2
 
 **Versionamento da API:**
 - Prefixo canônico: `/api/v1/`
-- Compatibilidade legada temporária: `/api/`
-- Novos clientes devem usar `/api/v1/`
+- Não há alias legado `/api/` no roteamento atual
 
 ## 🔧 Setup da Database (PostgreSQL + PostGIS)
 
@@ -167,11 +166,11 @@ gunicorn config.wsgi:application --bind 127.0.0.1:8000
 
 - Todas as credenciais em variáveis de ambiente (`.env`)
 - Isolamento de dados por organização
-- JWT com tokens curta-vida
+- JWT com `SIMPLE_JWT` explícito (`access=5m`, `refresh=1d`)
 - RBAC (Role-Based Access Control)
 - Testes de isolamento multi-tenant
 
-Veja [Security Checklist](.github/copilot-instructions.md#security-checklist-pre-merge) antes de fazer deploy.
+Veja o checklist em [`docs/multi-tenancy.md`](docs/multi-tenancy.md) antes de fazer deploy.
 
 ## 🤝 Contribuindo
 

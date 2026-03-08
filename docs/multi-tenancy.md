@@ -1,6 +1,6 @@
 # 🏢 Isolamento Multi-Tenant
 
-Documentação detalhada sobre o padrão de isolamento de dados entre organizações no **coordgeo**.
+Documentação do padrão de isolamento entre organizações no backend **coordgeo**.
 
 ---
 
@@ -17,15 +17,23 @@ Documentação detalhada sobre o padrão de isolamento de dados entre organizaç
 **Obrigatório** em toda request à API:
 
 ```http
-GET /api/projects/ HTTP/1.1
+GET /api/v1/projects/ HTTP/1.1
 Authorization: Bearer <JWT>
 X-Organization-ID: 550e8400-e29b-41d4-a716-446655440000
 ```
 
-**Responsabilidade do Frontend**:
+**Responsabilidade do frontend**:
 - Enviar header em TODAS as requisições API
 - Mudar header quando user switcha de org
 - Armazenar header no global app state
+
+Exceções (sem `X-Organization-ID`):
+- `POST /api/v1/token/`
+- `POST /api/v1/token/refresh/`
+- `POST /api/v1/auth/register/`
+- `GET /api/v1/user/profile/`
+- `GET /api/v1/user/organizations/`
+- `GET /api/v1/user/default-organization/`
 
 ### 2. Permission Class: `IsOrgMember`
 
@@ -125,13 +133,15 @@ class LayerViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
+
+    No backend atual, o mesmo padrão de validação extra também é aplicado em `PermissionViewSet.perform_create` para `subject_user`, `subject_team` e `resource_id` da organização ativa.
 ```
 
 ---
 
 ## 📋 Padrão para Novos ViewSets
 
-**Template obrigatório**:
+**Template base recomendado**:
 
 ```python
 from rest_framework import viewsets
@@ -155,12 +165,14 @@ class NewResourceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # ✅ Force active_organization
         serializer.save(organization=self.request.active_organization)
-    
-    def perform_update(self, serializer):
-        # Validar que resource pertence à active_org
-        if serializer.instance.organization_id != self.request.active_organization.id:
-            raise ValidationError("Resource belongs to different organization")
-        serializer.save()
+
+    # Opcional conforme o modelo:
+    # def perform_update(self, serializer):
+    #     if serializer.instance.organization_id != self.request.active_organization.id:
+    #         raise ValidationError("Resource belongs to different organization")
+    #     serializer.save()
+
+> Observação: no código atual nem todos os ViewSets implementam `perform_update`. O isolamento principal é garantido por `get_queryset` + `IsOrgMember`.
 ```
 
 ---
@@ -234,7 +246,7 @@ def test_organization_isolation(self):
     # User A acessa sua org
     self.client.force_authenticate(user=self.user_a)
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
-    response = self.client.get('/api/projects/', **headers)
+    response = self.client.get('/api/v1/projects/', **headers)
     
     # Só vê Project A
     project_ids = [p['id'] for p in response.data['results']]
@@ -248,7 +260,7 @@ def test_organization_isolation(self):
 def test_missing_organization_header(self):
     """Request without X-Organization-ID returns 400"""
     self.client.force_authenticate(user=self.user_a)
-    response = self.client.get('/api/projects/')  # No header!
+    response = self.client.get('/api/v1/projects/')  # No header!
     self.assertEqual(response.status_code, 400)
     self.assertIn('X-Organization-ID', str(response.data))
 ```
@@ -260,7 +272,7 @@ def test_unauthorized_organization(self):
     """User not member of org returns 403"""
     self.client.force_authenticate(user=self.user_a)
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_b.id)}
-    response = self.client.get('/api/projects/', **headers)
+    response = self.client.get('/api/v1/projects/', **headers)
     self.assertEqual(response.status_code, 403)
     self.assertIn('not member', str(response.data).lower())
 ```
@@ -274,7 +286,7 @@ def test_create_respects_active_organization(self):
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
     
     response = self.client.post(
-        '/api/projects/',
+        '/api/v1/projects/',
         {
             'name': 'New Project',
             'description': 'Test'
@@ -311,7 +323,7 @@ def test_layer_must_belong_to_active_org(self):
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
     
     response = self.client.post(
-        '/api/layers/',
+        '/api/v1/layers/',
         {
             'name': 'Layer A',
             'project': str(project_b.id),  # Project from Org B!
@@ -352,8 +364,8 @@ def test_cascade_deletion_on_org(self):
 
 - [ ] `get_queryset()` filtra por `request.active_organization`
 - [ ] `perform_create()` usa `request.active_organization` (NUNCA cliente data)
-- [ ] `perform_update()` valida resource pertence à active_org
-- [ ] `perform_destroy()` valida resource pertence à active_org
+- [ ] Se houver risco de mudança de ownership, considerar `perform_update()` com validação explícita
+- [ ] Se houver regra extra de remoção, considerar `perform_destroy()` com validação explícita
 - [ ] Permission classes incluem `IsOrgMember`
 - [ ] Serializers NÃO permitem editar `organization` field
 - [ ] ForeignKeys para org-scoped resources são validados
@@ -365,13 +377,14 @@ def test_cascade_deletion_on_org(self):
 - [ ] Teste de unauthorized org ✅
 - [ ] Teste de enforcement em create ✅
 - [ ] Teste de validação de ForeignKeys ✅
+- [ ] Teste de bootstrap sem header (`/user/organizations`, `/user/profile`) ✅
 - [ ] Cobertura de casos error (400/403/404)
 - [ ] Testes para read (GET) - isolamento
-- [ ] Testes para write (POST/PUT) - enforcement
+- [ ] Testes para write (POST/PATCH) - enforcement
 
 ### Performance & Data
 
-- [ ] Índices em `organization` field em novo modelo
+- [ ] Índices em `organization` field em novo modelo (`Meta.indexes`)
 - [ ] `select_related()` utilizado para ForeignKeys
 - [ ] `prefetch_related()` para reverse relationships
 - [ ] Nenhuma query não-paginada em list endpoints
@@ -511,7 +524,7 @@ def test_team_isolation(self):
     
     self.client.force_authenticate(user=self.user_a)
     headers = {'HTTP_X_ORGANIZATION_ID': str(self.org_a.id)}
-    response = self.client.get('/api/teams/', **headers)
+    response = self.client.get('/api/v1/teams/', **headers)
     
     team_ids = [t['id'] for t in response.data['results']]
     self.assertIn(str(team_a.id), team_ids)
@@ -563,4 +576,4 @@ class FeatureViewSet(viewsets.ModelViewSet):
 ---
 
 **Status**: Production-Ready  
-**Last updated**: March 2025
+**Last updated**: March 2026

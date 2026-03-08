@@ -24,17 +24,17 @@ Como garantimos isolamento completo entre organizações:
 
 ### 3️⃣ [Guia de API REST](./api-guide.md)
 Referência completa dos endpoints disponíveis:
-- `/api/users/` - Gestão de usuários
-- `/api/organizations/` - Gestão de organizações
-- `/api/memberships/` - Memberships em orgs
-- `/api/teams/` - Times dentro de orgs
-- `/api/projects/` - Projetos geoespaciais
-- `/api/layers/` - Camadas dentro de projetos
-- `/api/datasources/` - Fontes de dados compartilhadas
-- `/api/permissions/` - Permissões granulares
-
-### 4️⃣ [Requisitos Funcionais e de Segurança](./requirements.md) *(em progresso)*
-Status de implementação de requisitos.
+- `/api/v1/token/` e `/api/v1/token/refresh/` - JWT
+- `/api/v1/auth/register/` - Registro público
+- `/api/v1/user/*` - Bootstrap sem `X-Organization-ID`
+- `/api/v1/users/` - Gestão de usuários
+- `/api/v1/organizations/` - Gestão de organizações
+- `/api/v1/memberships/` - Memberships em orgs
+- `/api/v1/teams/` - Times dentro de orgs
+- `/api/v1/projects/` - Projetos geoespaciais
+- `/api/v1/layers/` - Camadas dentro de projetos
+- `/api/v1/datasources/` - Fontes de dados compartilhadas
+- `/api/v1/permissions/` - Permissões ACL
 
 ---
 
@@ -62,8 +62,8 @@ Status de implementação de requisitos.
 
 | Camada | Tecnologia |
 |--------|-----------|
-| **Frontend** | MapLibre GL JS, HTML5 |
-| **Backend** | Django 4.2+ , Django REST Framework |
+| **Frontend** | React + MapLibre GL |
+| **Backend** | Django 6 + Django REST Framework |
 | **Database** | PostgreSQL 13+ + PostGIS |
 | **Geospatial** | GeoDjango, PostGIS, PMTiles, MVT |
 | **Auth** | JWT (djangorestframework-simplejwt) |
@@ -79,7 +79,7 @@ Status de implementação de requisitos.
 ✅ **Header validation** - X-Organization-ID obrigatório  
 ✅ **Context enforcement** - isOrgMember permission class  
 ✅ **Query filtering** - Todos ViewSets filtram por org  
-✅ **Spatial indexes** - Performance em geometrias  
+✅ **JWT explícito** - `SIMPLE_JWT` configurado em `settings.py`  
 ✅ **Testes de isolamento** - Coverage multi-tenant  
 
 ---
@@ -164,5 +164,5 @@ Veja [Security Checklist](./multi-tenancy.md#-pre-merge-security-checklist) ante
 
 ---
 
-**Last updated**: March 2025  
+**Last updated**: March 2026  
 **Status**: Production-Ready

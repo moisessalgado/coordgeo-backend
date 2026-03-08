@@ -1,15 +1,15 @@
 # 🏗️ Visão Geral da Arquitetura
 
-Uma visão técnica da plataforma **coordgeo** - como os componentes se comunicam, como os dados fluem e decisões arquiteturais.
+Uma visão técnica da plataforma **coordgeo**: como os componentes se comunicam, como os dados fluem e quais contratos estão ativos no backend atual.
 
 ---
 
-## 🔄 Fluxo de Request
+## 🔄 Fluxo de Request (org-scoped)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Frontend (MapLibre GL)                         │
-│              Envia: X-Organization-ID header                      │
+│                    Frontend (React + MapLibre)                    │
+│      Envia Authorization + X-Organization-ID (quando aplicável)   │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
                           │ POST /api/v1/projects/
@@ -17,59 +17,49 @@ Uma visão técnica da plataforma **coordgeo** - como os componentes se comunica
                           │ Body: {name, description, geometry}
                           │
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│              Django REST Framework + DRF Router                    │
-│                      (api/urls.py)                                  │
+│            Django REST Framework + Router (api/urls.py)           │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│            Permission Classes (request validation)                 │
+│              Permission Classes (request validation)               │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │ 1. IsAuthenticated                                         │  │
-│  │    → Valida JWT token é válido                            │  │
+│  │ 1. IsAuthenticated                                            │  │
+│  │    -> valida JWT                                               │  │
 │  │                                                            │  │
-│  │ 2. IsOrgMember                                            │  │
-│  │    → Extrai X-Organization-ID do header                  │  │
-│  │    → Valida user é membro da org (Membership query)      │  │
-│  │    → Setta request.active_organization se válido         │  │
-│  │    → Retorna 400 se header falta                         │  │
-│  │    → Retorna 403 se user não é membro                    │  │
+│  │ 2. IsOrgMember                                               │  │
+│  │    -> extrai X-Organization-ID                              │  │
+│  │    -> valida membership do usuario                          │  │
+│  │    -> seta request.active_organization/membership           │  │
+│  │    -> 400 sem header / 403 sem membership                   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│               ViewSet (projects/views.py)                          │
+│                 ViewSet (projects/views.py)                        │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │ get_queryset(self):                                        │  │
-│  │   # Filtra APENAS projetos da active_organization         │  │
-│  │   return Project.objects.filter(                           │  │
-│  │     organization=request.active_organization              │  │
-│  │   )                                                        │  │
+│  │ get_queryset(self):                                           │  │
+│  │   return Project.objects.filter(organization=active_org)      │  │
 │  │                                                            │  │
-│  │ perform_create(self, serializer):                         │  │
-│  │   # FORÇA organization = active_organization              │  │
-│  │   # NUNCA usa client-provided organization!               │  │
-│  │   serializer.save(                                        │  │
-│  │     organization=request.active_organization,             │  │
-│  │     created_by=request.user                               │  │
-│  │   )                                                        │  │
+│  │ perform_create(self, serializer):                            │  │
+│  │   serializer.save(organization=active_org, created_by=user)  │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│              Django ORM (models layer)                             │
-│  Project.objects.filter(organization=active_org)                  │
-│  → Gera SQL com WHERE organization_id = ?                         │
-│  → Usa index em organization field para performance               │
+│                 Django ORM (models layer)                          │
+│  Project.objects.filter(organization=active_org)                   │
+│  -> SQL com WHERE organization_id = ?                              │
+│  -> usa indices definidos em Meta.indexes                          │
 └─────────────────────────┬──────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼──────────────────────────────────────────┐
-│       PostgreSQL + PostGIS Extension (Spatial Database)            │
+│          PostgreSQL + PostGIS Extension (Spatial DB)               │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │ CREATE INDEX idx_project_org ON project(organization_id); │  │
+│  │ CREATE INDEX ... ON project(organization_id);             │  │
 │  │                                                            │  │
 │  │ SELECT * FROM project                                     │  │
-│  │ WHERE organization_id = $1  -- Usa index!               │  │
-│  │ AND geometry && ST_Box2D(?)  -- Spatial query            │  │
+│  │ WHERE organization_id = $1                                 │  │
+│  │ AND geometry && ST_Box2D(?)                                │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────┘
 ```
@@ -94,7 +84,7 @@ graph TB
     
     Datasource["📊 Datasource<br/>name<br/>organization_id<br/>datasource_type<br/>storage_url<br/>metadata"]
     
-    Permission["🔒 Permission<br/>user_id<br/>object_id<br/>object_type<br/>action"]
+    Permission["🔒 Permission<br/>resource_type<br/>resource_id<br/>subject_user/team<br/>role"]
     
     User -->|owner_of| Org
     User -->|belongs_to| Membership
@@ -212,13 +202,22 @@ router.register(r"projects", ProjectViewSet)
 router.register(r"layers", LayerViewSet)
 router.register(r"datasources", DatasourceViewSet)
 router.register(r"permissions", PermissionViewSet)
+
+urlpatterns = [
+    path("auth/register/", RegisterView.as_view()),
+    path("token/", TokenObtainPairView.as_view()),
+    path("token/refresh/", TokenRefreshView.as_view()),
+    path("user/profile/", UserProfileView.as_view()),
+    path("user/organizations/", UserOrganizationsView.as_view()),
+    path("user/default-organization/", UserDefaultOrganizationView.as_view()),
+]
 ```
 
 Gera URLs padrão CRUD:
 - `GET /api/v1/projects/` - List (paginated)
 - `POST /api/v1/projects/` - Create
 - `GET /api/v1/projects/{id}/` - Retrieve
-- `PUT /api/v1/projects/{id}/` - Update
+- `PATCH /api/v1/projects/{id}/` - Update parcial
 - `DELETE /api/v1/projects/{id}/` - Delete
 
 ---
@@ -244,13 +243,13 @@ class Meta:
     ]
 ```
 
-Modelos com geometria DEVEM ter spatial index:
+Modelos com geometria DEVEM ser avaliados para spatial index conforme volume e tipo de query:
 
 ```python
 class Project(models.Model):
     geometry = gis_models.GeometryField(
-        spatial_index=True,  # PostGIS spatial index
-        srid=4326            # WGS84
+        null=True,
+        blank=True
     )
 ```
 
@@ -274,13 +273,13 @@ projects = Project.objects.filter(
 
 ## 🔄 Autenticação JWT
 
-Configurado com `djangorestframework-simplejwt`:
+Configurado com `djangorestframework-simplejwt` e `JWTAuthentication` no DRF.
 
 ### Flow
 
 ```
 1. POST /api/v1/token/ + email + password
-   → djangorestframework-simplejwt retorna {access, refresh}
+    -> retorna {access, refresh}
 
 2. Cliente armazena access token
 
@@ -294,23 +293,18 @@ Configurado com `djangorestframework-simplejwt`:
 ### Configuração (config/settings.py)
 
 ```python
-INSTALLED_APPS = [
-    'rest_framework_simplejwt',
-    ...
-]
-
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 ```
 
@@ -326,45 +320,25 @@ Modelos espaciais:
 from django.contrib.gis.db import models as gis_models
 
 class Project(models.Model):
-    # Suporta qualquer geometria (Point, Polygon, MultiPolygon, etc)
     geometry = gis_models.GeometryField(
-        null=True, blank=True,
-        spatial_index=True,
-        srid=4326  # WGS84 (lat, lng)
+        null=True,
+        blank=True,
+        help_text="Bounding box or extent of the project"
     )
 ```
 
-### Serializers com GeoJSON
+### Serializers
 
 ```python
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
-
-class ProjectSerializer(GeoFeatureModelSerializer):
+class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        geo_field = 'geometry'  # auto-serializa para GeoJSON
-        fields = ['id', 'name', 'geometry', 'created_at']
+        fields = "__all__"
 ```
 
-### Queries Espaciais
+### Queries espaciais
 
-```python
-from django.contrib.gis.db.models import Q
-from django.contrib.gis.geos import Polygon
-
-# Filtrar por bbox
-bbox = Polygon([...])  # Bounding box
-projects = Project.objects.filter(
-    organization=active_org,
-    geometry__intersects=bbox
-)
-
-# Distance queries
-from django.db.models.functions import Distance
-projects = Project.objects.annotate(
-    distance=Distance('geometry', point)
-).filter(distance__lte=F('buffer_distance'))
-```
+O backend atual armazena geometria em `Project.geometry` e pode ser estendido para filtros espaciais específicos conforme necessidade.
 
 ---
 
@@ -405,7 +379,7 @@ def test_unauthorized_organization(self):
 ### Performance Considerations
 
 1. **Pagination** - Todas list endpoints são paginadas (50 itens/página default)
-2. **Spatial indexes** - Geometry queries usam PostGIS indexes
+2. **Spatial queries** - uso de geometrias em `Project` com PostGIS
 3. **Select-related** - ViewSets usam `.select_related()` para evitar N+1
 4. **Caching** - Redis para sessions/cache (configurável)
 5. **Async** - Celery para long-running tasks (Raster processing, etc)
@@ -463,4 +437,4 @@ gunicorn config.wsgi:application \
 ---
 
 **Status**: Production-Ready  
-**Last updated**: March 2025
+**Last updated**: March 2026
