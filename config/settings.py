@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import hashlib
 from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,6 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+
+# SimpleJWT warns for HMAC keys shorter than 32 bytes. Keep compatibility by
+# deriving a deterministic strong signing key when needed.
+JWT_SIGNING_KEY = config('JWT_SIGNING_KEY', default=SECRET_KEY)
+if len(JWT_SIGNING_KEY) < 32:
+    JWT_SIGNING_KEY = hashlib.sha256(JWT_SIGNING_KEY.encode('utf-8')).hexdigest()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
@@ -170,6 +177,7 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "SIGNING_KEY": JWT_SIGNING_KEY,
 }
 
 # CORS Configuration for frontend on different domain/port

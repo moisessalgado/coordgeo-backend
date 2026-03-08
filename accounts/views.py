@@ -15,7 +15,7 @@ class RegisterView(APIView):
     Endpoint público para registro de novos usuários.
     
     POST /api/v1/auth/register/
-    Body: { "email": "user@example.com", "password": "senha123" }
+    Body: { "email": "user@example.com", "password": "senha123", "plan": "free|pro" }
     Response: { "id": 1, "email": "user@example.com", "username": "user" }
     """
     permission_classes = [AllowAny]
